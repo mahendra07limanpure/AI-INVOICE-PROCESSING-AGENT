@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+google-genai
+pdfplumber
+rapidfuzz
+python-multipart
+jinja2
+weasyprint
+pillow

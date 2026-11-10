@@ -1,0 +1,6 @@
+id,name,tax_id,bank_account,status,tolerance_pct,tolerance_abs
+V001,Apex Office Supplies Pvt Ltd,27AAACA1234F1Z5,HDFC0001234-5566,approved,2,500
+V002,BlueRiver Logistics,29AABCB5678K1Z2,ICIC0004321-7788,approved,2,500
+V003,Cedar Print Works,07AAFCC9012L1Z9,SBIN0005555-1122,approved,3,750
+V004,Delta Cloud Services,06AADCD3456M1Z4,AXIS0006666-3344,approved,2,1000
+V005,Shady Traders,33AAECS7890N1Z1,KKBK0007777-9900,blocked,0,0

@@ -1,0 +1,5 @@
+po_number,vendor_id,total,billed,basis
+PO-1001,V001,118000,0,gross
+PO-1042,V002,300000,100000,gross
+PO-1050,V003,59000,0,gross
+PO-1077,V004,200000,0,net

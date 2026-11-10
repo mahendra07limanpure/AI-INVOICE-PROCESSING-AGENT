@@ -1,0 +1,6 @@
+data.db
+uploads/
+cache/
+.env
+__pycache__/
+samples/

@@ -1,0 +1,430 @@
+=====================================================================
+PROJECT SPEC: AI INVOICE PROCESSING AGENT (PDF -> DECISION)
+Zamp AI Solutions Analyst case study, problem statement PS-1
+=====================================================================
+
+HOW TO USE THIS FILE WITH COPILOT
+- Open this file in VS Code and keep it open in a tab, or paste sections into Copilot Chat.
+- Build in the order given in section 14 (BUILD ORDER). After each step, run the acceptance check.
+- Code conventions (strict): concise code, NO code comments, keep every function name,
+  variable name, route path and file name exactly as written in this spec.
+
+---------------------------------------------------------------------
+1. GOAL
+---------------------------------------------------------------------
+Build a LIVE, RUNNABLE web app that takes a vendor invoice PDF as input and produces a clear,
+reasoned decision as output, with every intermediate step visible.
+
+Decisions (4 statuses):
+  APPROVED      all checks pass
+  NEEDS_REVIEW  a human must look (soft variance, suspected duplicate, bank change)
+  ON_HOLD       information missing; vendor must be asked (drafted email included)
+  REJECTED      hard policy failure (blocked vendor, exact duplicate, over-billing)
+
+Grading focus from the brief:
+- It actually runs end to end on real PDF inputs (not a mockup).
+- UI has a LIVE RUN VIEW (each stage shown as it executes) and a DASHBOARD (history, status, outputs).
+- 2-4 non-trivial edge cases handled deliberately.
+- Clear explanation of every decision.
+- A 5-minute demo video and a live demo in the interview.
+- No Zamp or Pace tools. No paid API required.
+
+CORE PRINCIPLE: "LLM reads, code decides, text explains."
+The LLM (or offline parser) only EXTRACTS fields. A deterministic Python rule engine makes the decision.
+The model never approves a payment.
+
+---------------------------------------------------------------------
+2. ASSUMPTIONS (show these on the Settings page in the UI)
+---------------------------------------------------------------------
+1. Two-way match only (invoice vs PO). Goods receipt / three-way match is a listed next step.
+2. Single currency (INR). Amounts printed as "INR".
+3. Vendor master and PO ledger live in SQLite, seeded from CSV files.
+4. Input is a PDF upload (email ingestion is a stretch goal).
+5. Each PO has a "basis": "gross" (tax-inclusive) or "net" (pre-tax). Invoices are compared on the PO's basis.
+6. Partial billing against a PO is allowed (invoice may be less than the remaining balance).
+7. Policy values live in a table and are shown in the UI: hard_pct=5, dup_window_days=7,
+   min_confidence=0.7, vendor_match_min=75. Per-vendor soft tolerance: tolerance_pct and tolerance_abs.
+8. All test invoices are synthetic.
+
+---------------------------------------------------------------------
+3. TECH STACK
+---------------------------------------------------------------------
+Backend:    Python 3.11, FastAPI, Uvicorn
+Database:   SQLite (file data.db), WAL mode
+Extraction: Layer A (primary): Google Gemini API free tier via the google-genai package, PDF input, JSON output.
+            Layer B (fallback, no key needed): pdfplumber text extraction + regex.
+Matching:   RapidFuzz (fuzzy vendor name and invoice number)
+Frontend:   One static index.html, Tailwind via CDN, vanilla JS (or Alpine.js). Live view uses POLLING.
+PDF gen:    Jinja2 + WeasyPrint (test invoices), Pillow (make a scanned-looking PDF)
+Deploy:     Render web service (single service serves API + static UI)
+
+requirements.txt:
+  fastapi
+  uvicorn
+  google-genai
+  pdfplumber
+  rapidfuzz
+  python-multipart
+  jinja2
+  weasyprint
+  pillow
+
+Environment variables:
+  GEMINI_API_KEY   optional. If unset, the offline extractor is used.
+  GEMINI_MODEL     optional. Default "gemini-2.5-flash-lite" (copy exact id from Google AI Studio).
+  USE_CACHE        "1" (default) reuses cached Gemini results by file hash.
+
+Start command: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+---------------------------------------------------------------------
+4. FOLDER STRUCTURE
+---------------------------------------------------------------------
+invoice-agent/
+  app/
+    main.py          FastAPI routes, startup seeding
+    db.py            conn(), init()
+    seed.py          run(): load vendors.csv, pos.csv, policy defaults
+    events.py        emit(run_id, stage, state, detail, ms)
+    extract.py       extract(path), extract_gemini, extract_offline
+    rules.py         pure rule functions (no I/O except reading DB)
+    pipeline.py      run(run_id, path): orchestrates stages
+    static/index.html
+  data/vendors.csv
+  data/pos.csv
+  samples/           the 10 generated PDFs
+  cache/             Gemini result cache (gitignored)
+  uploads/           uploaded files (gitignored)
+  gen_invoices.py    generates samples/*.pdf
+  requirements.txt
+  .gitignore         (data.db, uploads/, cache/, .env, __pycache__/)
+  README.md
+
+---------------------------------------------------------------------
+5. DATA FILES (use exactly these values)
+---------------------------------------------------------------------
+data/vendors.csv
+id,name,tax_id,bank_account,status,tolerance_pct,tolerance_abs
+V001,Apex Office Supplies Pvt Ltd,27AAACA1234F1Z5,HDFC0001234-5566,approved,2,500
+V002,BlueRiver Logistics,29AABCB5678K1Z2,ICIC0004321-7788,approved,2,500
+V003,Cedar Print Works,07AAFCC9012L1Z9,SBIN0005555-1122,approved,3,750
+V004,Delta Cloud Services,06AADCD3456M1Z4,AXIS0006666-3344,approved,2,1000
+V005,Shady Traders,33AAECS7890N1Z1,KKBK0007777-9900,blocked,0,0
+
+data/pos.csv
+po_number,vendor_id,total,billed,basis
+PO-1001,V001,118000,0,gross
+PO-1042,V002,300000,100000,gross
+PO-1050,V003,59000,0,gross
+PO-1077,V004,200000,0,net
+
+---------------------------------------------------------------------
+6. DATABASE SCHEMA (SQLite)
+---------------------------------------------------------------------
+vendors(id text primary key, name text, tax_id text, bank_account text, status text, tolerance_pct real, tolerance_abs real)
+pos(po_number text primary key, vendor_id text, total real, billed real, basis text)
+policy(key text primary key, value real)
+runs(id integer primary key autoincrement, filename text, stored_path text, file_hash text, status text,
+     reason_codes text, explanation text, extracted text, po_number text, amount real, vendor_id text,
+     email_draft text, created_at text default current_timestamp)
+events(id integer primary key autoincrement, run_id integer, stage text, state text, detail text, ms integer,
+       created_at text default current_timestamp)
+
+Notes:
+- reason_codes, extracted, detail are JSON strings.
+- Every db access uses a fresh connection through the conn() context manager (pipeline runs in a thread).
+- Enable WAL and a timeout: PRAGMA journal_mode=WAL; sqlite3.connect(..., timeout=10).
+- runs.status values: RUNNING, APPROVED, NEEDS_REVIEW, ON_HOLD, REJECTED, FAILED.
+
+---------------------------------------------------------------------
+7. PIPELINE BLUEPRINT (the live run view shows exactly these stages)
+---------------------------------------------------------------------
+Stage names (use these strings): ingest, extract, confidence_gate, vendor_check, po_match,
+duplicate_check, financial_validation, decision.
+
+Each stage emits "running" then "done" via emit(run_id, stage, state, detail, ms).
+Wrap pipeline.run in try/except: on any exception set status FAILED, emit stage "decision" with
+{"status":"FAILED", ...} so the UI never hangs.
+
+1) ingest
+   - read bytes, compute SHA-256, store file_hash on the run. detail: {"hash": first 12 chars}
+
+2) extract
+   - x = extract(path). Returns the schema in section 8. detail: the extracted dict (includes "engine").
+
+3) confidence_gate
+   - missing = required fields among [invoice_number, invoice_date, total] that are falsy
+   - low = fields in field_confidence with value not None and < min_confidence, among the same required fields
+   - if missing or low -> ON_HOLD, codes ["MISSING_FIELDS", "FIELD_<NAME>" ...], drafted vendor email
+     listing exactly which fields were unreadable. STOP.
+
+4) vendor_check
+   - best fuzzy match of vendor_name against vendors.name using rapidfuzz token_set_ratio (lowercase);
+     exact tax_id match forces score 100.
+   - if no vendor, score < vendor_match_min, or vendor.status != "approved" -> REJECTED, ["VENDOR_NOT_APPROVED"]. STOP.
+   - bank check: if extracted vendor_bank_account exists and differs from vendor.bank_account ->
+     NEEDS_REVIEW, ["BANK_DETAILS_CHANGED"], explanation mentions possible payment fraud and phone verification. STOP.
+
+5) po_match
+   - if po_reference present and exists in pos -> method "explicit"
+   - else candidates = POs of this vendor where (total - billed) >= 0.98 * comparable_amount (see rule below);
+     exactly one candidate -> method "inferred"; zero -> "none"; more than one -> "ambiguous"
+   - no PO -> ON_HOLD, ["PO_NOT_FOUND"], email asking vendor for the PO number. STOP.
+
+6) duplicate_check (compare against past runs with status APPROVED or NEEDS_REVIEW, any file)
+   - exact: same file_hash -> REJECTED, ["DUPLICATE_EXACT"] with the earlier run id. STOP.
+   - fuzzy: same vendor_id AND ( normalized invoice number equal
+            OR (abs(amount difference) < 1 AND invoice dates within dup_window_days) )
+     -> NEEDS_REVIEW, ["DUPLICATE_SUSPECTED"], explanation references the earlier run id. STOP.
+   - normalize invoice number: uppercase, remove the word REVISED, remove all non-alphanumerics.
+
+7) financial_validation
+   - comparable_amount: if po.basis == "net" use net (subtotal, or total - tax_amount when subtotal missing);
+     else use gross (total).
+   - remaining = po.total - po.billed
+   - over = comparable_amount - remaining
+   - if over <= 0 -> ok (partial billing)
+   - soft = tolerance_pct% of remaining; if vendor.tolerance_abs > 0 then soft = min(soft, tolerance_abs)
+   - if over <= soft -> ok
+   - elif over <= hard_pct% of remaining -> NEEDS_REVIEW, ["VARIANCE_SOFT"]
+   - else -> REJECTED, ["OVER_BILLING"]
+   - detail: {invoice, po_remaining, variance_pct, basis, result}
+
+8) decision
+   - APPROVED: reason codes ["VENDOR_OK", "PO_MATCHED_EXPLICIT" or "PO_MATCHED_INFERRED", "WITHIN_TOLERANCE"];
+     update pos.billed += comparable_amount; explanation includes remaining PO balance after approval.
+   - Save status, reason_codes, explanation, extracted, po_number, amount, vendor_id, email_draft on the run.
+   - emit stage "decision" done with {"status","codes","explanation"}.
+
+Explanation text is templated from facts (deterministic). Optional: one Gemini call to rephrase it in plain
+English; it must never change the status or codes.
+
+---------------------------------------------------------------------
+8. EXTRACTION SCHEMA (the dict returned by extract(path))
+---------------------------------------------------------------------
+{
+  "vendor_name", "vendor_tax_id", "vendor_bank_account",
+  "invoice_number", "invoice_date" (YYYY-MM-DD), "due_date", "po_reference",
+  "currency", "subtotal", "tax_amount", "tax_included_in_line_items", "total",
+  "line_items": [{"description","qty","unit_price","amount"}],
+  "field_confidence": {"invoice_number","invoice_date","total","po_reference","vendor_name"},
+  "document_quality": "clean" | "scanned" | "poor",
+  "missing_fields": [],
+  "engine": "gemini" | "offline"
+}
+Rules: unknown fields are null, never guessed. The pipeline recomputes math itself; never trust the model total blindly.
+
+extract(path) logic:
+  1. sha256 of file; if USE_CACHE=="1" and cache/<hash>.json exists -> return it.
+  2. if GEMINI_API_KEY set: try extract_gemini(path); on success write cache and return; on any exception fall through.
+  3. return extract_offline(path).
+
+extract_gemini: google-genai client, model from GEMINI_MODEL, contents = [PDF bytes part (application/pdf), schema prompt],
+  config response_mime_type="application/json"; strip ``` fences; json.loads; set engine "gemini".
+  Prompt: "Return only JSON with keys <list>. Use null for anything not clearly visible. Never guess."
+
+extract_offline: pdfplumber text of all pages.
+  - If text length < 40 chars -> document_quality "scanned", all fields null (this makes scanned PDFs go ON_HOLD).
+  - vendor_name: first non-empty line.
+  - vendor_tax_id regex: \b(\d{2}[A-Z]{5}\d{4}[A-Z]\dZ\d)\b
+  - vendor_bank_account regex: \b([A-Z]{4}0\d{6}-\d{4})\b
+  - invoice_number: invoice\s*(?:no\.?|number|#)\s*[:\-]?\s*([A-Z0-9\-\/]+)
+  - invoice_date: invoice\s*date\s*[:\-]?\s*(\d{4}-\d{2}-\d{2})
+  - due_date: due\s*date\s*[:\-]?\s*(\d{4}-\d{2}-\d{2})
+  - po_reference: \b(PO-\d+)\b
+  - subtotal: last match of  sub\s*-?\s*total\s*[:\-]?\s*(?:INR)?\s*([\d,]+(?:\.\d+)?)
+  - tax_amount: last match of  (?:gst|tax|vat) amount\s*[:\-]?\s*(?:INR)?\s*([\d,]+(?:\.\d+)?)
+  - total: last match of  (?<!sub)(?:grand\s+total|total\s+due|amount\s+due|total)\s*[:\-]?\s*(?:INR)?\s*([\d,]+(?:\.\d+)?)
+  - field_confidence = 0.9 for each found required field, null otherwise; missing_fields lists the null ones.
+  - currency "INR", engine "offline".
+  All regexes are case-insensitive. Generated invoices MUST use these exact labels (section 10).
+
+---------------------------------------------------------------------
+9. API CONTRACT (main.py)
+---------------------------------------------------------------------
+POST /api/runs                 multipart file upload -> creates run (status RUNNING), starts pipeline in a daemon thread,
+                               returns {"id": run_id}
+POST /api/runs/sample          json {"name": "01_happy.pdf"} -> copies samples/<name> into uploads and starts a run
+GET  /api/samples              list of sample file names
+GET  /api/runs                 list of runs (id, filename, status, reason_codes, po_number, amount, created_at), newest first
+GET  /api/runs/{id}            {"run": {...full row...}, "events": [...]}
+GET  /api/runs/{id}/events     ?after=<event_id> -> events with id > after (used for live polling, every 400 ms)
+GET  /api/runs/{id}/file       serves the uploaded PDF (for the preview iframe)
+POST /api/runs/{id}/action     json {"action": "approve"|"reject"|"request_info", "note": ""}
+                               only for NEEDS_REVIEW or ON_HOLD runs; updates status (APPROVED / REJECTED / ON_HOLD),
+                               on approve adds amount to pos.billed, and logs an event stage "human_review"
+GET  /api/pos                  PO ledger rows with remaining = total - billed
+GET  /api/vendors              vendor master
+GET  /api/policy               policy table + assumptions list
+GET  /api/stats                {total, by_status, approved_value, stp_rate, avg_ms}
+POST /api/reset                delete runs and events, re-run seed.run() (resets PO billed amounts)
+Static files mounted at "/" (app/static, html=True). On startup: db.init(); seed.run() if vendors table is empty.
+
+Live updates use POLLING of /api/runs/{id}/events (not SSE) to avoid thread/async bugs.
+
+---------------------------------------------------------------------
+10. TEST INVOICES (gen_invoices.py generates these 10 PDFs into samples/)
+---------------------------------------------------------------------
+Generation: Jinja2 HTML templates (use 3-4 different layouts, same required labels) -> WeasyPrint PDF.
+Required text labels in EVERY invoice (so the offline extractor works):
+  vendor name on the FIRST line, then:
+  "GSTIN: <tax id>", "Bank A/C: <bank account>", "Invoice No: <no>", "Invoice Date: <YYYY-MM-DD>",
+  "Due Date: <YYYY-MM-DD>", optional "PO: <PO-xxxx>", then a line-items table, then
+  "Subtotal: INR 100,000.00", "GST Amount: INR 18,000.00", "Total: INR 118,000.00".
+  Print the GST rate only inside the table (not on the GST Amount line). Use "INR", not the rupee symbol.
+
+#  File                    Vendor / data                                                         Expected result
+01 01_happy.pdf            V001, Invoice No INV-2231, 2026-11-02, PO-1001,                       APPROVED
+                           subtotal 100000.00, GST 18000.00, total 118000.00, correct bank
+02 02_split_2of3.pdf       V002, BRL-0087, 2026-11-03, PO-1042,                                  APPROVED (PO-1042 remaining 200000 -> 100000)
+                           subtotal 84745.76, GST 15254.24, total 100000.00
+03 03_split_overbill.pdf   V002, BRL-0091, 2026-11-05, PO-1042,                                  REJECTED OVER_BILLING (run after 02)
+                           subtotal 127118.64, GST 22881.36, total 150000.00
+04 04_exact_dup.pdf        byte-identical copy of 01_happy.pdf                                    REJECTED DUPLICATE_EXACT (run after 01)
+05 05_fuzzy_dup.pdf        V001, Invoice No "INV2231 (Revised)", 2026-11-03, PO-1001,            NEEDS_REVIEW DUPLICATE_SUSPECTED (run after 01)
+                           same amounts as 01
+06 06_scanned_missing.pdf  V003 Cedar Print Works, image-only PDF (render to PNG, blur, noise,     ON_HOLD MISSING_FIELDS
+                           small rotation, save as PDF), invoice number not visible
+07 07_tax_embedded.pdf     V004, DCS-5501, 2026-11-04, PO-1077 (net basis, 200000),              APPROVED (compared on net basis)
+                           subtotal 200000.00, GST 36000.00, total 236000.00
+08 08_blocked_vendor.pdf   V005 Shady Traders, ST-009, 2026-11-04, no PO, total 59000.00          REJECTED VENDOR_NOT_APPROVED
+09 09_no_po.pdf            V003, CPW-310, 2026-11-06, NO PO line,                                 APPROVED with PO_MATCHED_INFERRED (PO-1050)
+                           subtotal 50000.00, GST 9000.00, total 59000.00
+10 10_bank_change.pdf      V004, DCS-5502, 2026-11-07, PO-1077, bank AXIS0009999-0000            NEEDS_REVIEW BANK_DETAILS_CHANGED
+                           (differs from master), total 236000.00
+
+Fixed demo order after /api/reset:  01, 04, 05, 02, 03, 06, 07, 08, 09, 10
+
+---------------------------------------------------------------------
+11. EDGE CASES (the four we showcase, plus one bonus)
+---------------------------------------------------------------------
+EC1  SPLIT BILLING AGAINST ONE PO (files 02, 03)
+     A vendor splits one PO into several invoices. We match on cumulative billed vs remaining balance, not invoice
+     total vs PO total. Invoice 2 is approved and the ledger updates; the next oversized invoice is rejected as over-billing.
+     Shows: state across runs (PO ledger tab).
+
+EC2  NEAR-DUPLICATE RESUBMISSION (files 04, 05)
+     Exact file duplicate is rejected automatically. A corrected/resent invoice ("INV2231 (Revised)") that normalizes to the
+     same invoice number is sent to a human with a side-by-side comparison instead of auto-rejecting.
+     Shows: balance between preventing double payment and not blocking legitimate corrected invoices.
+
+EC3  SCANNED / UNREADABLE INVOICE WITH MISSING KEY DATA (file 06)
+     Extraction confidence gate fails. The system does not guess; status ON_HOLD with a drafted email naming exactly which fields
+     were unreadable.
+     Shows: graceful degradation, human in the loop with a specific ask.
+
+EC4  TAX EMBEDDED VS SEPARATED / PO BASIS (file 07)
+     PO is net 200000; invoice total is 236000 including GST. Naive comparison flags 18% over-billing. We normalize to the PO's
+     basis (net) and approve; the reasoning shows the normalization.
+     Shows: domain understanding of messy invoice formats.
+
+BONUS  BANK DETAILS CHANGED (file 10)
+     Invoice bank account differs from the vendor master -> NEEDS_REVIEW with a fraud warning. Cheap to build, high impact.
+
+Known tradeoff to mention in the demo: the fuzzy duplicate rule (same vendor, same amount, dates within 7 days) can flag
+legitimate repeat invoices; the cost is a human review, not a wrong rejection.
+
+---------------------------------------------------------------------
+12. UI SPEC (static/index.html, three tabs, Tailwind CDN, vanilla JS)
+---------------------------------------------------------------------
+Colors: green = APPROVED, amber = NEEDS_REVIEW and ON_HOLD, red = REJECTED, grey = RUNNING, dark red = FAILED.
+Header: app name, "Reset demo data" button (POST /api/reset), tab switcher.
+
+TAB 1  PROCESS (live run view)
+  - Upload zone (drag and drop + file picker) and a "Run a sample" dropdown (GET /api/samples) with a Run button.
+  - Left column: vertical stepper with the 8 stages from section 7. Each row shows an icon (pending / spinner / check /
+    warning / cross), the stage name, duration in ms, and a one-line summary of detail. Clicking a row expands the detail JSON.
+  - Right column: PDF preview in an iframe (/api/runs/{id}/file) and a small table of extracted fields with an engine badge
+    ("gemini" or "offline").
+  - Bottom: decision card with big status badge, reason-code chips, the explanation, and the drafted email (copy button)
+    when present. For NEEDS_REVIEW / ON_HOLD show Approve / Reject / Request info buttons (POST /api/runs/{id}/action).
+  - Live updates: after POST /api/runs, poll /api/runs/{id}/events?after=<last_id> every 400 ms and animate stages
+    until the "decision" event with state "done" arrives.
+
+TAB 2  DASHBOARD
+  - KPI tiles from /api/stats: total runs, approved %, on hold, needs review, rejected, total value approved, STP rate,
+    average processing time.
+  - Status filter chips + runs table (id, file, status badge, reason codes, PO, amount, time). Click a row to replay that
+    run's stages and decision in a side panel.
+  - Simple bar of status counts (plain divs or Chart.js CDN).
+  - PO ledger table (total, billed, remaining, basis) and vendor master table.
+
+TAB 3  SETTINGS AND ASSUMPTIONS
+  - Show policy values and per-vendor tolerances (read only) and the assumptions list from section 2.
+  - Show which extraction engine is active (Gemini key present or offline).
+
+Keep the design clean, consistent spacing, readable at 1280px width, works at 1024px.
+
+---------------------------------------------------------------------
+13. DEPLOY AND DEMO RELIABILITY
+---------------------------------------------------------------------
+- Push to GitHub; create a Render web service; set the start command from section 3; set GEMINI_API_KEY and GEMINI_MODEL.
+- Free instances sleep when idle: open the URL ~10 minutes before any demo.
+- SQLite resets on redeploy: that is fine, startup seeding and the Reset button restore the data.
+- Warm the Gemini cache by running all 10 samples once; if the API or network fails during the demo the cache
+  and the offline extractor still work. Mention this fallback openly.
+- Test the live URL from an incognito window on a different network.
+
+---------------------------------------------------------------------
+14. BUILD ORDER FOR COPILOT (do one step at a time, run the check, then continue)
+---------------------------------------------------------------------
+STEP 1  Scaffold folders, requirements.txt, .gitignore, db.py (conn, init with WAL), seed.py (CSV load + policy defaults),
+        data CSVs. CHECK: python app/seed.py creates data.db with 5 vendors and 4 POs.
+
+STEP 2  gen_invoices.py: Jinja2 + WeasyPrint, create all 10 PDFs per section 10 (06 as image-only).
+        CHECK: samples/ has 10 PDFs; open 01 and confirm all required labels exist.
+
+STEP 3  extract.py: extract_offline first. CHECK: print extract_offline for 01, 02, 07, 09, 10 and confirm
+        invoice_number, invoice_date, po_reference, subtotal, tax_amount, total, tax id and bank account are correct;
+        06 returns all null with document_quality "scanned".
+
+STEP 4  rules.py: norm_inv, net_total, check_completeness, check_vendor, find_po, check_duplicates, check_amount per section 7.
+        CHECK: small unit tests for the logic with hand-built dicts (split billing, net basis, soft tolerance, fuzzy duplicate).
+
+STEP 5  events.py and pipeline.py per section 7, with try/except FAILED handling.
+        CHECK: a script that runs the 10 samples in the demo order and prints status + codes matching section 10.
+
+STEP 6  main.py with every route in section 9. CHECK: curl / browser tests for upload, events polling, reset, stats.
+
+STEP 7  index.html: Process tab first (upload, stepper, decision card), then Dashboard, then Settings.
+        CHECK: run sample 01 and watch the stages animate; run all samples and see the dashboard fill.
+
+STEP 8  extract_gemini + cache + fallback in extract(). CHECK: with the key, engine shows "gemini"; without it, "offline";
+        results for the 10 samples stay the same.
+
+STEP 9  Review actions (/api/runs/{id}/action) and the human review buttons.
+
+STEP 10 Polish: error states, empty states, loading states, README, deploy to Render, rehearse the demo order twice.
+
+---------------------------------------------------------------------
+15. ACCEPTANCE TEST (final)
+---------------------------------------------------------------------
+After POST /api/reset and running the files in demo order, the final statuses must be:
+  01 APPROVED | 04 REJECTED (DUPLICATE_EXACT) | 05 NEEDS_REVIEW (DUPLICATE_SUSPECTED) | 02 APPROVED |
+  03 REJECTED (OVER_BILLING) | 06 ON_HOLD (MISSING_FIELDS) | 07 APPROVED | 08 REJECTED (VENDOR_NOT_APPROVED) |
+  09 APPROVED (PO_MATCHED_INFERRED) | 10 NEEDS_REVIEW (BANK_DETAILS_CHANGED)
+PO ledger after the run: PO-1001 billed 118000; PO-1042 billed 200000; PO-1050 billed 59000; PO-1077 billed 200000.
+
+---------------------------------------------------------------------
+16. 5-MINUTE DEMO VIDEO SCRIPT
+---------------------------------------------------------------------
+0:00-0:30  Problem in one sentence, the principle "LLM reads, code decides", and the stated assumptions.
+0:30-1:45  Happy path: upload 01, narrate each stage, show the decision and explanation.
+1:45-3:45  Edge cases (about 30-40 s each): 05 fuzzy duplicate (side by side), 02 then 03 split billing (ledger updates),
+           06 scanned file (ON_HOLD plus drafted email), 07 tax/net basis; mention 10 bank change if time allows.
+3:45-4:30  Dashboard: history, filters, audit replay, PO ledger, policy page, human review buttons.
+4:30-5:00  Limitations and next steps: three-way match, ERP integration, email ingestion, learning from reviewer overrides.
+
+---------------------------------------------------------------------
+17. INTERVIEW TALKING POINTS
+---------------------------------------------------------------------
+1. Why the LLM only extracts and rules decide: auditability, determinism, cost of a wrong payment.
+2. Hallucination control: null instead of guess, confidence gate, deterministic recomputation, offline fallback.
+3. Tax/basis normalization and why a naive total comparison creates false mismatches.
+4. Why fuzzy duplicates go to review instead of auto-reject.
+5. Scaling to thousands of invoices: job queue, batch extraction, per-vendor templates, real database, ERP integration.
+6. Learning loop: reviewer overrides become labeled examples and tolerance suggestions.
+7. Biggest assumptions and how to extend them: two-way match, single currency.
+
+=====================================================================
+END OF SPEC
+=====================================================================
