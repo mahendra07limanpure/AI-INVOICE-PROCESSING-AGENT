@@ -1,11 +1,20 @@
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 DB=Path(__file__).resolve().parent.parent/"data.db"
+@contextmanager
 def conn():
     c=sqlite3.connect(DB,timeout=10)
     c.row_factory=sqlite3.Row
     c.execute("PRAGMA journal_mode=WAL")
-    return c
+    try:
+        yield c
+        c.commit()
+    except Exception:
+        c.rollback()
+        raise
+    finally:
+        c.close()
 def init():
     with conn() as c:
         c.executescript("""CREATE TABLE IF NOT EXISTS vendors(id TEXT PRIMARY KEY,name TEXT,tax_id TEXT,bank_account TEXT,status TEXT,tolerance_pct REAL,tolerance_abs REAL);

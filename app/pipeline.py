@@ -1,53 +1,61 @@
-import json,hashlib,time,os
+import json,hashlib,time,traceback
 from .db import conn
 from .events import emit
 from .extract import extract
-from .rules import *
+from .rules import normalize_extracted,check_completeness,check_vendor,find_po,check_duplicates,check_amount,same_bank,net_total,policy
 STAGES=["ingest","extract","confidence_gate","vendor_check","po_match","duplicate_check","financial_validation","decision"]
+class Halt(Exception): pass
 def run(run_id,path):
-    status="FAILED";codes=[];explain="";email=None;x={};v=None;p=None;amount=None
+    status="FAILED";codes=[];explain="";email=None;x={};v=None;p=None;amount=None;h=None;done=set()
+    def begin(s): emit(run_id,s,"running",{});return time.time()
+    def end(s,t,d): done.add(s);emit(run_id,s,"done",d,int((time.time()-t)*1000))
+    def halt(st,cs,ex,em=None):
+        nonlocal status,codes,explain,email
+        status,codes,explain,email=st,cs,ex,em
+        raise Halt
     try:
-        t=time.time();h=hashlib.sha256(open(path,"rb").read()).hexdigest();emit(run_id,"ingest","running",{"hash":h[:12]});emit(run_id,"ingest","done",{"hash":h[:12]},int((time.time()-t)*1000))
-        t=time.time();emit(run_id,"extract","running",{});x=extract(path);emit(run_id,"extract","done",x,int((time.time()-t)*1000))
-        emit(run_id,"confidence_gate","running",{});missing,low=check_completeness(x)
-        if missing or low:
-            emit(run_id,"confidence_gate","done",{"missing":missing,"low":low})
-            codes=["MISSING_FIELDS"]+["FIELD_"+k.upper() for k in missing+low];status="ON_HOLD";email="Please provide a clearer invoice showing: "+", ".join(missing+low);explain="Required fields were unreadable: "+", ".join(missing+low);raise StopIteration
-        emit(run_id,"confidence_gate","done",{"missing":missing,"low":low})
-        emit(run_id,"vendor_check","running",{});v,score=check_vendor(x)
-        if score<75 or v["status"]!="approved":
-            emit(run_id,"vendor_check","done",{"vendor":v["name"],"score":score,"result":"rejected"})
-            codes=["VENDOR_NOT_APPROVED"];status="REJECTED";explain="Vendor is not approved in the vendor master.";raise StopIteration
-        if x.get("vendor_bank_account") and x["vendor_bank_account"]!=v["bank_account"]:
-            emit(run_id,"vendor_check","done",{"vendor":v["name"],"score":score,"result":"bank_changed"})
-            codes=["BANK_DETAILS_CHANGED"];status="NEEDS_REVIEW";explain="Bank details differ from the master; possible payment fraud, verify by phone.";raise StopIteration
-        emit(run_id,"vendor_check","done",{"vendor":v["name"],"score":score})
-        emit(run_id,"po_match","running",{});p,method=find_po(x,v)
+        t=begin("ingest");h=hashlib.sha256(open(path,"rb").read()).hexdigest();end("ingest",t,{"hash":h[:12]})
+        t=begin("extract");x=normalize_extracted(extract(path),path);end("extract",t,x)
+        t=begin("confidence_gate");missing,low=check_completeness(x);bad=missing+low
+        end("confidence_gate",t,{"missing":missing,"low":low,"engine":x.get("engine"),"grounded":x.get("grounded"),"math_ok":x.get("math_ok")})
+        if bad: halt("ON_HOLD",["MISSING_FIELDS"]+["FIELD_"+k.upper() for k in bad],"Required fields were missing or could not be verified in the document: "+", ".join(bad)+".","Please provide a clearer invoice showing: "+", ".join(bad))
+        t=begin("vendor_check");v,score=check_vendor(x)
+        if not v or score<policy("vendor_match_min",75) or v["status"]!="approved":
+            end("vendor_check",t,{"vendor":v["name"] if v else None,"score":score,"result":"rejected"})
+            known=bool(v) and score>=policy("vendor_match_min",75)
+            if not known: v=None
+            halt("REJECTED",["VENDOR_NOT_APPROVED"],"Vendor is blocked or not approved in the vendor master." if known else f"Vendor could not be matched to the vendor master (best match score {score}).")
+        d={"vendor":v["name"],"score":score}
+        if x.get("vendor_bank_account") and not same_bank(x["vendor_bank_account"],v["bank_account"]):
+            end("vendor_check",t,{**d,"result":"bank_changed"})
+            halt("NEEDS_REVIEW",["BANK_DETAILS_CHANGED"],"Bank details differ from the vendor master; possible payment fraud, verify with the vendor by phone before paying.")
+        end("vendor_check",t,d)
+        t=begin("po_match");p,method=find_po(x,v)
         if not p:
-            emit(run_id,"po_match","done",{"method":method,"result":"not_found"})
-            codes=["PO_NOT_FOUND"];status="ON_HOLD";email="Please provide the purchase order number for this invoice.";explain="No unambiguous purchase order was found.";raise StopIteration
-        emit(run_id,"po_match","done",{"po":p["po_number"],"method":method})
+            end("po_match",t,{"method":method,"result":"not_found"})
+            msg={"not_found":f"Invoice cites {x.get('po_reference')}, which is not on file for this vendor.","ambiguous":"Several open purchase orders could fit and none could be chosen confidently."}.get(method,"No purchase order was cited and none could be inferred.")
+            halt("ON_HOLD",["PO_AMBIGUOUS" if method=="ambiguous" else "PO_NOT_FOUND"],msg,"Please confirm the purchase order number for this invoice.")
+        end("po_match",t,{"po":p["po_number"],"method":method})
         amount=net_total(x) if p["basis"]=="net" else x["total"]
-        emit(run_id,"duplicate_check","running",{});rh=h
-        dup=check_duplicates(run_id,x,v,amount,rh)
+        t=begin("duplicate_check");dup=check_duplicates(run_id,x,v,amount,h)
         if dup:
             old,kind=dup
-            if kind=="exact": codes=["DUPLICATE_EXACT"];status="REJECTED";explain=f"Exact duplicate of run {old['id']}."
-            else: codes=["DUPLICATE_SUSPECTED"];status="NEEDS_REVIEW";explain=f"Possible duplicate of run {old['id']} requires human review."
-            emit(run_id,"duplicate_check","done",{"result":kind,"earlier_run":old["id"]});raise StopIteration
-        emit(run_id,"duplicate_check","done",{})
-        emit(run_id,"financial_validation","running",{});rem=p["total"]-p["billed"];over=amount-rem
-        soft=min(rem*float(v["tolerance_pct"])/100,float(v["tolerance_abs"])) if v["tolerance_abs"] else rem*float(v["tolerance_pct"])/100
-        if over<=0 or over<=soft: result="ok"
-        elif over<=rem*5/100: result="soft";status="NEEDS_REVIEW";codes=["VARIANCE_SOFT"]
-        else: result="hard";status="REJECTED";codes=["OVER_BILLING"]
-        emit(run_id,"financial_validation","done",{"invoice":amount,"po_remaining":rem,"variance_pct":round(over/rem*100,2),"basis":p["basis"],"result":result})
-        if status=="FAILED": status="APPROVED";codes=["VENDOR_OK","PO_MATCHED_"+method.upper(),"WITHIN_TOLERANCE"];explain=f"Approved on {p['basis']} basis; remaining PO balance after approval: {rem-amount:.2f}."
-        elif not explain: explain="Invoice exceeds the permitted tolerance."
-    except StopIteration: pass
-    except Exception as e: status="FAILED";explain=str(e);codes=["PIPELINE_ERROR"]
+            end("duplicate_check",t,{"result":kind,"earlier_run":old["id"]})
+            if kind=="exact": halt("REJECTED",["DUPLICATE_EXACT"],f"Exact duplicate of run {old['id']}.")
+            halt("NEEDS_REVIEW",["DUPLICATE_SUSPECTED"],f"Possible duplicate of run {old['id']} (same vendor, matching invoice number or amount and date). It may be a corrected invoice, so a human must decide.")
+        end("duplicate_check",t,{"result":"none"})
+        t=begin("financial_validation");amount,rem,over,result,pct=check_amount(x,v,p)
+        end("financial_validation",t,{"invoice":amount,"po_remaining":rem,"variance_pct":pct,"basis":p["basis"],"result":result})
+        if result=="soft": halt("NEEDS_REVIEW",["VARIANCE_SOFT"],f"Invoice of {amount:,.2f} is {over:,.2f} over the remaining PO balance of {rem:,.2f}. It is inside the review band, so a human must check it.")
+        if result=="hard": halt("REJECTED",["OVER_BILLING"],f"Invoice of {amount:,.2f} exceeds the remaining PO balance of {rem:,.2f} by {over:,.2f}, beyond the hard tolerance.")
+        status="APPROVED";codes=["VENDOR_OK","PO_MATCHED_"+method.upper(),"WITHIN_TOLERANCE"]
+        explain=f"Approved on {p['basis']} basis: vendor verified, PO {p['po_number']} matched ({method}), amount {amount:,.2f} within tolerance. Remaining PO balance after approval: {rem-amount:,.2f}."
+    except Halt: pass
+    except Exception as e: status="FAILED";explain=str(e);codes=["PIPELINE_ERROR"];traceback.print_exc()
+    for s in STAGES[:-1]:
+        if s not in done: emit(run_id,s,"skipped",{})
     emit(run_id,"decision","running",{"status":status})
     with conn() as c:
-        c.execute("UPDATE runs SET file_hash=?,status=?,reason_codes=?,explanation=?,extracted=?,po_number=?,amount=?,vendor_id=?,email_draft=? WHERE id=?",(locals().get("h"),status,json.dumps(codes),explain,json.dumps(x),p["po_number"] if p else None,amount,v["id"] if v else None,email,run_id))
-        if status=="APPROVED" and p:c.execute("UPDATE pos SET billed=billed+? WHERE po_number=?",(amount,p["po_number"]))
+        c.execute("UPDATE runs SET file_hash=?,status=?,reason_codes=?,explanation=?,extracted=?,po_number=?,amount=?,vendor_id=?,email_draft=? WHERE id=?",(h,status,json.dumps(codes),explain,json.dumps(x),p["po_number"] if p else None,amount,v["id"] if v else None,email,run_id))
+        if status=="APPROVED" and p: c.execute("UPDATE pos SET billed=billed+? WHERE po_number=?",(amount,p["po_number"]))
     emit(run_id,"decision","done",{"status":status,"codes":codes,"explanation":explain})

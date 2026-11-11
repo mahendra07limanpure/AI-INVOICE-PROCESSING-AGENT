@@ -3,6 +3,7 @@ from pathlib import Path
 try: import pdfplumber
 except Exception: pdfplumber=None
 ROOT=Path(__file__).resolve().parent.parent
+LABELS=r"(GSTIN:|Bank A/C:|Invoice No:|Invoice Date:|Due Date:|PO:|Subtotal:|GST Amount:|(?<!Sub)Total:)"
 def _num(s): return float(s.replace(",",""))
 def extract_offline(path):
     text=""
@@ -11,6 +12,7 @@ def extract_offline(path):
             with pdfplumber.open(path) as p:text="\n".join(x.extract_text() or "" for x in p.pages)
         except Exception: pass
     fields={"vendor_name":None,"vendor_tax_id":None,"vendor_bank_account":None,"invoice_number":None,"invoice_date":None,"due_date":None,"po_reference":None,"currency":"INR","subtotal":None,"tax_amount":None,"tax_included_in_line_items":None,"total":None,"line_items":[]}
+    text=re.sub(LABELS,r"\n\1",text,flags=re.I)
     if len(text.strip())<40:
         fields.update(field_confidence={k:None for k in ["invoice_number","invoice_date","total","po_reference","vendor_name"]},document_quality="scanned",missing_fields=["invoice_number","invoice_date","total"],engine="offline");return fields
     lines=[x.strip() for x in text.splitlines() if x.strip()]; fields["vendor_name"]=lines[0] if lines else None
@@ -48,8 +50,8 @@ def extract(path):
     if os.getenv("GEMINI_API_KEY"):
         try:
             x=extract_gemini(path)
+            cp.write_text(json.dumps(x))
+            return x
         except Exception:
-            x=extract_offline(path)
-    else:
-        x=extract_offline(path)
-    cp.write_text(json.dumps(x));return x
+            pass
+    return extract_offline(path)
