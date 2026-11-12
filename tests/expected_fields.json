@@ -1,0 +1,10 @@
+{
+  "01_happy.pdf": ["Apex Office Supplies Pvt Ltd", "27AAACA1234F1Z5", "HDFC0001234-5566", "INV-2231", "2026-11-02", "PO-1001", 100000, 18000, 118000],
+  "02_split_2of3.pdf": ["BlueRiver Logistics", "29AABCB5678K1Z2", "ICIC0004321-7788", "BRL-0087", "2026-11-03", "PO-1042", 84745.76, 15254.24, 100000],
+  "03_split_overbill.pdf": ["BlueRiver Logistics", "29AABCB5678K1Z2", "ICIC0004321-7788", "BRL-0091", "2026-11-05", "PO-1042", 127118.64, 22881.36, 150000],
+  "05_fuzzy_dup.pdf": ["Apex Office Supplies Pvt Ltd", "27AAACA1234F1Z5", "HDFC0001234-5566", "INV2231 (Revised)", "2026-11-03", "PO-1001", 100000, 18000, 118000],
+  "07_tax_embedded.pdf": ["Delta Cloud Services", "06AADCD3456M1Z4", "AXIS0006666-3344", "DCS-5501", "2026-11-04", "PO-1077", 200000, 36000, 236000],
+  "08_blocked_vendor.pdf": ["Shady Traders", "33AAECS7890N1Z1", "KKBK0007777-9900", "ST-009", "2026-11-04", null, 50000, 9000, 59000],
+  "09_no_po.pdf": ["Cedar Print Works", "07AAFCC9012L1Z9", "SBIN0005555-1122", "CPW-310", "2026-11-06", null, 50000, 9000, 59000],
+  "10_bank_change.pdf": ["Delta Cloud Services", "06AADCD3456M1Z4", "AXIS0009999-0000", "DCS-5502", "2026-11-07", "PO-1077", 200000, 36000, 236000]
+}

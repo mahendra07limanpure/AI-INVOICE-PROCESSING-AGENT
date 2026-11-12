@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: invoice-decision-agent
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
+      - key: USE_CACHE
+        value: "1"
+      - key: EXPLAIN_WITH_LLM
+        value: "0"
+      - key: DISABLE_GEMINI
+        value: "0"

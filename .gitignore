@@ -2,5 +2,7 @@ data.db
 uploads/
 cache/
 .env
+.env.example
 __pycache__/
-samples/
+*.pyc
+.venv/

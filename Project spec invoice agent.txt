@@ -71,7 +71,7 @@ requirements.txt:
 
 Environment variables:
   GEMINI_API_KEY   optional. If unset, the offline extractor is used.
-  GEMINI_MODEL     optional. Default "gemini-2.5-flash-lite" (copy exact id from Google AI Studio).
+  GEMINI_MODEL     optional. Default "gemini-3.5-flash-lite" (copy exact id from Google AI Studio).
   USE_CACHE        "1" (default) reuses cached Gemini results by file hash.
 
 Start command: uvicorn app.main:app --host 0.0.0.0 --port $PORT

@@ -31,7 +31,8 @@ def norm_po(v):
     s=clean(v)
     if not s: return None
     m=re.search(r"(?:P\.?\s?O\.?|purchase\s*order)[\s\-#:_/.]*(\d+)",s,re.I)
-    return f"PO-{m.group(1)}" if m else s.upper()
+    if m:return f"PO-{m.group(1)}"
+    return f"PO-{s}" if s.isdigit() else s.upper()
 def same_bank(a,b): return bool(a) and squash(a)==squash(b)
 def conf(v,val):
     if val is None: return None
@@ -54,6 +55,7 @@ def normalize_extracted(x,path=None):
     x=dict(x or {})
     for k in ("vendor_name","invoice_number","currency"): x[k]=clean(x.get(k))
     x["vendor_tax_id"]=squash(x.get("vendor_tax_id")) or None
+    x["vendor_bank_account_raw"]=clean(x.get("vendor_bank_account"))
     x["vendor_bank_account"]=squash(x.get("vendor_bank_account")) or None
     x["invoice_date"]=to_iso(x.get("invoice_date"))
     x["due_date"]=to_iso(x.get("due_date"))

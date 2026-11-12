@@ -1,256 +1,57 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Invoice Decision Agent</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<style>
-  .spin{animation:spin .7s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-</style>
+<style>.spin{animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.hiddenx{display:none}</style>
 </head>
 <body class="bg-slate-100 text-slate-900">
-<main class="max-w-6xl mx-auto px-4 py-6">
-  <header class="flex flex-wrap items-center justify-between gap-3 mb-5">
-    <div>
-      <h1 class="text-2xl font-bold tracking-tight">Invoice Decision Agent</h1>
-      <p class="text-sm text-slate-500">LLM reads. Rules decide. Every stage stays visible.</p>
-    </div>
-    <div class="flex items-center gap-2">
-      <nav id="tabs" class="flex bg-white rounded-lg p-1 shadow-sm"></nav>
-      <button id="resetBtn" class="bg-slate-900 text-white text-sm px-3 py-2 rounded-lg">Reset demo data</button>
-    </div>
-  </header>
-
-  <section id="process">
-    <div class="bg-white rounded-xl shadow-sm p-4 mb-4 flex flex-wrap items-end gap-3">
-      <div id="drop" class="flex-1 min-w-[240px] border-2 border-dashed border-slate-300 rounded-lg px-4 py-3 text-sm text-slate-600">
-        Drop a PDF here, or
-        <button id="browse" class="text-blue-700 font-medium">browse</button>
-        <input id="file" type="file" accept="application/pdf,.pdf" class="hidden">
-        <div id="fileName" class="text-slate-800 mt-1"></div>
-      </div>
-      <button id="uploadBtn" class="bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">Run upload</button>
-      <div class="flex items-center gap-2">
-        <select id="samples" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white"></select>
-        <button id="sampleBtn" class="bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">Run sample</button>
-      </div>
-    </div>
-    <div class="grid lg:grid-cols-2 gap-4">
-      <div class="bg-white rounded-xl shadow-sm p-4">
-        <h2 class="font-semibold mb-3">Live run</h2>
-        <div id="steps"></div>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm p-4">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="font-semibold">Invoice</h2>
-          <span id="engine" class="hidden text-xs uppercase tracking-wide bg-slate-900 text-white px-2 py-1 rounded"></span>
-        </div>
-        <iframe id="preview" class="w-full h-72 border border-slate-200 rounded-lg bg-slate-50" title="Invoice PDF"></iframe>
-        <div id="fields" class="mt-3 text-sm"></div>
-      </div>
-    </div>
-    <div id="decision" class="bg-white rounded-xl shadow-sm p-5 mt-4"></div>
-  </section>
-
-  <section id="dashboard" class="hidden">
-    <div id="stats" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
-    <div id="bars" class="bg-white rounded-xl shadow-sm p-4 mb-4"></div>
-    <div class="flex flex-wrap gap-2 mb-3" id="filters"></div>
-    <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="text-left text-slate-500 border-b"><tr><th class="p-3">ID</th><th>File</th><th>Status</th><th>Reasons</th><th>PO</th><th>Amount</th><th>When</th></tr></thead>
-        <tbody id="runs"></tbody>
-      </table>
-    </div>
-    <div id="replay" class="bg-white rounded-xl shadow-sm p-4 mt-4 hidden"></div>
-    <div class="grid lg:grid-cols-2 gap-4 mt-4">
-      <div class="bg-white rounded-xl shadow-sm p-4 overflow-x-auto">
-        <h2 class="font-semibold mb-2">PO ledger</h2>
-        <table class="w-full text-sm"><thead class="text-left text-slate-500"><tr><th class="py-1">PO</th><th>Vendor</th><th>Total</th><th>Billed</th><th>Remaining</th><th>Basis</th></tr></thead><tbody id="pos"></tbody></table>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm p-4 overflow-x-auto">
-        <h2 class="font-semibold mb-2">Vendor master</h2>
-        <table class="w-full text-sm"><thead class="text-left text-slate-500"><tr><th class="py-1">ID</th><th>Name</th><th>Status</th><th>GSTIN</th><th>Tolerance</th></tr></thead><tbody id="vendors"></tbody></table>
-      </div>
-    </div>
-  </section>
-
-  <section id="settings" class="hidden">
-    <div id="settingsBody" class="grid lg:grid-cols-2 gap-4"></div>
-  </section>
+<main class="max-w-7xl mx-auto px-4 py-6">
+<header class="flex flex-wrap justify-between items-center gap-4 mb-6"><div><h1 class="text-2xl font-bold">Invoice Decision Agent</h1><p class="text-sm text-slate-500">LLM reads. Deterministic rules decide. Every stage is auditable.</p></div><div class="flex gap-2 items-center"><nav id="tabs" class="bg-white rounded-lg shadow-sm p-1"></nav><button id="resetBtn" class="bg-slate-900 text-white px-3 py-2 rounded-lg text-sm">Reset demo data</button></div></header>
+<section id="process">
+<div class="bg-white rounded-xl shadow-sm p-4 mb-4"><div class="flex flex-wrap gap-3 items-center"><div id="drop" class="flex-1 min-w-[260px] border-2 border-dashed border-slate-300 rounded-lg p-3 text-sm text-slate-600">Drop a PDF here or <button id="browse" aria-label="Browse for PDF" class="text-blue-700 font-medium">browse</button><input id="file" name="file" aria-label="Invoice PDF" type="file" accept="application/pdf,.pdf" class="hidden"><div id="fileName" class="text-slate-900 mt-1"></div></div><button id="uploadBtn" class="bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">Run upload</button><label for="samples" class="sr-only">Sample invoice</label><select id="samples" name="samples" aria-label="Sample invoice" class="border rounded-lg px-3 py-2 text-sm min-w-[260px]"></select><button id="sampleBtn" class="bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">Run sample</button><button id="demoBtn" class="bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm">Run full demo sequence</button></div></div>
+<div id="slow" class="hidden bg-blue-50 text-blue-800 rounded-lg p-3 mb-4 text-sm">This run is taking longer than expected. The page will continue polling.</div>
+<div class="grid xl:grid-cols-2 gap-4"><div class="bg-white rounded-xl shadow-sm p-4"><div class="flex justify-between mb-3"><h2 class="font-semibold">Live run</h2><span id="runId" class="text-xs text-slate-500"></span></div><div id="steps"></div></div><div class="bg-white rounded-xl shadow-sm p-4"><div class="flex justify-between items-center mb-2"><h2 class="font-semibold">Invoice</h2><span id="engine" class="hidden text-xs bg-slate-900 text-white px-2 py-1 rounded"></span></div><div id="previewBox" class="min-h-[520px] flex items-center justify-center bg-slate-50 border rounded-lg"><span id="previewLoading" class="animate-pulse text-slate-400">Loading preview</span><img id="previewImage" class="hidden w-full max-h-[620px] object-contain" alt="Invoice preview"><iframe id="preview" class="hidden w-full min-h-[520px] border-0" title="Invoice PDF"></iframe></div><a id="openPdf" class="text-blue-700 text-sm" target="_blank">Open PDF</a><div id="fields" class="mt-3 text-sm"></div></div></div>
+<div id="decision" class="bg-white rounded-xl shadow-sm p-5 mt-4"></div>
+</section>
+<section id="dashboard" class="hidden"><div class="flex justify-between items-center mb-3"><h2 class="text-xl font-semibold">Dashboard</h2><div class="flex gap-2"><a href="/api/runs/export.csv" class="bg-white border rounded-lg px-3 py-2 text-sm">Download CSV</a></div></div><div id="stats" class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-4"></div><div class="grid lg:grid-cols-2 gap-4 mb-4"><div id="bars" class="bg-white rounded-xl shadow-sm p-4"></div><div id="reasons" class="bg-white rounded-xl shadow-sm p-4"></div></div><div id="filters" class="flex flex-wrap gap-2 mb-3"></div><div class="bg-white rounded-xl shadow-sm overflow-x-auto"><table class="w-full text-sm"><thead class="text-left text-slate-500 border-b"><tr><th class="p-3">ID</th><th>File</th><th>Status</th><th>Engine</th><th>Reasons</th><th>PO</th><th>Amount</th><th>Summary</th><th>Duration</th><th>Time</th></tr></thead><tbody id="runs"></tbody></table></div><div id="drawer" class="hidden bg-white rounded-xl shadow-sm p-4 mt-4"></div><div class="grid lg:grid-cols-2 gap-4 mt-4"><div class="bg-white rounded-xl shadow-sm p-4 overflow-x-auto"><h2 class="font-semibold mb-2">PO ledger</h2><table class="w-full text-sm"><thead class="text-left text-slate-500"><tr><th class="py-1">PO</th><th>Vendor</th><th>Total</th><th>Billed</th><th>Remaining</th><th>Progress</th></tr></thead><tbody id="pos"></tbody></table></div><div class="bg-white rounded-xl shadow-sm p-4 overflow-x-auto"><h2 class="font-semibold mb-2">Vendor master</h2><table class="w-full text-sm"><thead class="text-left text-slate-500"><tr><th class="py-1">ID</th><th>Name</th><th>Status</th><th>GSTIN</th><th>Tolerance</th></tr></thead><tbody id="vendors"></tbody></table></div></div></section>
+<section id="settings" class="hidden"><h2 class="text-xl font-semibold mb-4">Settings</h2><div class="bg-white rounded-xl shadow-sm p-4 mb-4"><label for="engineMode">Extraction mode</label><select id="engineMode" name="engineMode" aria-label="Extraction mode" class="border rounded px-2 py-1 ml-2"><option value="auto">Auto: fast offline, Gemini when unsure</option><option value="gemini_first">Gemini first</option><option value="offline">Offline only</option></select><button id="resetBreaker" class="ml-2 bg-slate-700 text-white rounded px-3 py-1">Reset circuit breaker</button><span id="breakerState" class="ml-2 text-sm"></span></div><div id="settingsBody" class="grid lg:grid-cols-2 gap-4"></div></section>
+<div id="toast" class="fixed bottom-4 right-4 hidden rounded-lg px-4 py-3 text-sm shadow-lg"></div>
 </main>
 <script>
-const STAGES=["ingest","extract","confidence_gate","vendor_check","po_match","duplicate_check","financial_validation","decision"];
-const LABEL={ingest:"Ingest",extract:"Extract",confidence_gate:"Confidence gate",vendor_check:"Vendor check",po_match:"PO match",duplicate_check:"Duplicate check",financial_validation:"Financial validation",decision:"Decision"};
-const FILTERS=["ALL","APPROVED","NEEDS_REVIEW","ON_HOLD","REJECTED","FAILED","RUNNING"];
-let timer, current, filter="ALL", runsCache=[];
-const $=(id)=>document.getElementById(id);
-function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-async function j(u,o){const r=await fetch(u,o); if(!r.ok) throw new Error(await r.text()); return r.json()}
-function money(n){return n==null||n===""?"—":"INR "+Number(n).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}
-function badge(status){
-  const map={APPROVED:"bg-green-100 text-green-800",NEEDS_REVIEW:"bg-amber-100 text-amber-800",ON_HOLD:"bg-amber-100 text-amber-900",REJECTED:"bg-red-100 text-red-800",RUNNING:"bg-slate-200 text-slate-700",FAILED:"bg-red-900 text-white"};
-  return `<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold ${map[status]||"bg-slate-200"}">${esc(status||"—")}</span>`;
-}
-function parse(detail){try{return typeof detail==="string"?JSON.parse(detail):detail||{}}catch(e){return {}}}
-function summary(stage,d){
-  if(d.reason && !d.result && !d.status) return "not reached ("+d.reason+")";
-  if(stage==="ingest") return d.hash?"SHA-256 "+d.hash:"";
-  if(stage==="extract") return [d.vendor_name,d.vendor_tax_id].filter(Boolean).join(" · ")||"no fields";
-  if(stage==="confidence_gate"){const f=(d.missing||[]).concat(d.low||[]);return f.length?"unreadable: "+f.join(", "):"required fields readable"}
-  if(stage==="vendor_check") return d.result==="rejected"?"not approved":d.result==="bank_changed"?"bank details changed":(d.vendor||"")+(d.score!=null?" · score "+d.score:"");
-  if(stage==="po_match") return d.po?d.po+" · "+d.method:(d.result||d.method||"");
-  if(stage==="duplicate_check") return d.result==="clear"?"no duplicate":d.result==="exact"?"exact duplicate of run "+d.earlier_run:d.result==="fuzzy"?"suspected duplicate of run "+d.earlier_run:(d.result||"");
-  if(stage==="financial_validation") return d.result?(d.result+" · "+d.basis+" · variance "+(d.variance_pct==null?"n/a":d.variance_pct+"%")):"";
-  if(stage==="decision") return d.status||"";
-  return "";
-}
-function icon(state,status){
-  if(state==="running") return `<span class="spin inline-block w-4 h-4 border-2 border-slate-300 border-t-blue-600 rounded-full"></span>`;
-  if(state==="skipped") return `<span class="inline-flex w-4 h-4 items-center justify-center text-slate-400">–</span>`;
-  if(state==="done" && (status==="REJECTED"||status==="FAILED")) return `<span class="inline-flex w-4 h-4 items-center justify-center rounded-full bg-red-600 text-white text-xs">×</span>`;
-  if(state==="done" && (status==="NEEDS_REVIEW"||status==="ON_HOLD")) return `<span class="inline-flex w-4 h-4 items-center justify-center rounded-full bg-amber-500 text-white text-xs">!</span>`;
-  if(state==="done") return `<span class="inline-flex w-4 h-4 items-center justify-center rounded-full bg-green-600 text-white text-xs">✓</span>`;
-  return `<span class="inline-block w-4 h-4 rounded-full border-2 border-slate-300"></span>`;
-}
-function renderSteps(target,events){
-  const latest={};
-  (events||[]).forEach(e=>{latest[e.stage]=e});
-  target.innerHTML=STAGES.map(stage=>{
-    const e=latest[stage];
-    const d=e?parse(e.detail):{};
-    const state=e?e.state:"pending";
-    const status=stage==="decision"?d.status:d.result==="rejected"||d.result==="hard"||d.result==="exact"?"REJECTED":d.result==="bank_changed"||d.result==="fuzzy"||d.result==="soft"?"NEEDS_REVIEW":d.result==="not_found"?"ON_HOLD":null;
-    return `<button type="button" data-stage="${stage}" class="w-full text-left flex gap-3 py-2 border-b border-slate-100">
-      <span class="mt-0.5">${icon(state,status)}</span>
-      <span class="flex-1">
-        <span class="font-medium">${LABEL[stage]}</span>
-        <span class="text-slate-400 text-xs ml-2">${state}${e&&e.ms?` · ${e.ms} ms`:""}</span>
-        <span class="block text-sm text-slate-600">${esc(summary(stage,d))}</span>
-        <pre class="detail hidden mt-2 text-xs bg-slate-50 p-2 rounded overflow-x-auto">${esc(e?JSON.stringify(d,null,2):"")}</pre>
-      </span>
-    </button>`;
-  }).join("");
-  target.querySelectorAll("button").forEach(b=>b.onclick=()=>b.querySelector(".detail").classList.toggle("hidden"));
-}
-function renderFields(x){
-  if(!x){$("fields").innerHTML=`<p class="text-slate-400">Extracted fields appear here.</p>`;$("engine").classList.add("hidden");return}
-  $("engine").textContent=x.engine||"offline";$("engine").classList.remove("hidden");
-  const rows=[["Vendor",x.vendor_name],["GSTIN",x.vendor_tax_id],["Bank account",x.vendor_bank_account],["Invoice no",x.invoice_number],["Invoice date",x.invoice_date],["Due date",x.due_date],["PO",x.po_reference],["Subtotal",x.subtotal],["GST amount",x.tax_amount],["Total",x.total],["Quality",x.document_quality]];
-  $("fields").innerHTML=`<table class="w-full">${rows.map(([k,v])=>`<tr class="border-b border-slate-100"><td class="py-1 text-slate-500 w-32">${k}</td><td class="py-1 font-medium">${esc(v??"—")}</td></tr>`).join("")}</table>`;
-}
-function renderDecision(target,run){
-  if(!run){target.innerHTML=`<p class="text-slate-400">Run an invoice to see the decision.</p>`;return}
-  let codes=[]; try{codes=JSON.parse(run.reason_codes||"[]")}catch(e){}
-  const actions=["NEEDS_REVIEW","ON_HOLD"].includes(run.status);
-  target.innerHTML=`<div class="flex flex-wrap items-center gap-3 mb-3"><span class="text-lg">${badge(run.status)}</span>${codes.map(c=>`<span class="text-xs bg-slate-100 px-2 py-1 rounded">${esc(c)}</span>`).join("")}</div>
-    <p class="leading-relaxed">${esc(run.explanation||"")}</p>
-    ${run.email_draft?`<div class="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3"><div class="flex justify-between items-center mb-1"><span class="text-sm font-medium">Draft to vendor</span><button id="copyEmail" class="text-sm text-blue-700">Copy</button></div><p class="text-sm">${esc(run.email_draft)}</p></div>`:""}
-    ${actions?`<div class="flex flex-wrap gap-2 mt-4"><button data-act="approve" class="bg-green-700 text-white px-3 py-2 rounded text-sm">Approve</button><button data-act="reject" class="bg-red-700 text-white px-3 py-2 rounded text-sm">Reject</button><button data-act="request_info" class="bg-amber-600 text-white px-3 py-2 rounded text-sm">Request info</button></div>`:""}`;
-  const copy=$("copyEmail"); if(copy) copy.onclick=()=>navigator.clipboard.writeText(run.email_draft||"");
-  target.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>act(b.dataset.act));
-}
-async function act(action){
-  await j(`/api/runs/${current}/action`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,note:""})});
-  const data=await j("/api/runs/"+current);
-  renderDecision($("decision"),data.run);
-}
-function tab(name){
-  ["process","dashboard","settings"].forEach(id=>$(id).classList.toggle("hidden",id!==name));
-  [...$("tabs").children].forEach(b=>b.className="px-3 py-1.5 rounded-md text-sm "+(b.dataset.tab===name?"bg-slate-900 text-white":"text-slate-600"));
-  if(name==="dashboard") loadDash();
-  if(name==="settings") loadSettings();
-}
-async function loadSamples(){
-  const a=await j("/api/samples");
-  $("samples").innerHTML=a.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join("");
-}
-function start(id){
-  current=id; clearInterval(timer);
-  $("preview").src="/api/runs/"+id+"/file";
-  renderFields(null); renderSteps($("steps"),[]);
-  $("decision").innerHTML=`<p class="text-slate-500">Processing…</p>`;
-  let last=0, seenDecision=false;
-  timer=setInterval(async()=>{
-    try{
-      const events=await j(`/api/runs/${id}/events?after=${last}`);
-      if(!events.length && !seenDecision) return;
-      const all=await j("/api/runs/"+id);
-      events.forEach(e=>{last=e.id});
-      renderSteps($("steps"),all.events);
-      const extracted=parse(all.run.extracted);
-      if(extracted && extracted.engine) renderFields(extracted);
-      else {
-        const hit=[...all.events].reverse().find(e=>e.stage==="extract"&&e.state==="done");
-        if(hit) renderFields(parse(hit.detail));
-      }
-      const done=all.events.some(e=>e.stage==="decision"&&e.state==="done");
-      if(done){seenDecision=true; renderDecision($("decision"),all.run); clearInterval(timer)}
-    }catch(err){$("decision").innerHTML=`<p class="text-red-700">${esc(err.message)}</p>`; clearInterval(timer)}
-  },400);
-}
-async function upload(){
-  const f=$("file").files[0]; if(!f) return;
-  const body=new FormData(); body.append("file",f);
-  start((await j("/api/runs",{method:"POST",body})).id);
-}
-async function sample(){start((await j("/api/runs/sample",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:$("samples").value})})).id)}
-function drawBars(by){
-  const keys=["APPROVED","NEEDS_REVIEW","ON_HOLD","REJECTED","FAILED","RUNNING"];
-  const max=Math.max(1,...keys.map(k=>by[k]||0));
-  const color={APPROVED:"bg-green-600",NEEDS_REVIEW:"bg-amber-500",ON_HOLD:"bg-amber-300",REJECTED:"bg-red-600",FAILED:"bg-red-900",RUNNING:"bg-slate-400"};
-  $("bars").innerHTML=`<h2 class="font-semibold mb-3">Status mix</h2><div class="space-y-2">${keys.map(k=>`<div class="flex items-center gap-3 text-sm"><span class="w-32 text-slate-500">${k.replace("_"," ")}</span><span class="h-3 ${color[k]} rounded" style="width:${((by[k]||0)/max)*100}%"></span><span>${by[k]||0}</span></div>`).join("")}</div>`;
-}
-function showRuns(){
-  const rows=runsCache.filter(r=>filter==="ALL"||r.status===filter);
-  $("runs").innerHTML=rows.length?rows.map(r=>{
-    let codes=[]; try{codes=JSON.parse(r.reason_codes||"[]")}catch(e){}
-    return `<tr data-id="${r.id}" class="border-b hover:bg-slate-50 cursor-pointer"><td class="p-3">${r.id}</td><td>${esc(r.filename)}</td><td>${badge(r.status)}</td><td class="text-xs">${esc(codes.join(", "))}</td><td>${esc(r.po_number||"—")}</td><td>${money(r.amount)}</td><td class="text-slate-500">${esc((r.created_at||"").replace("T"," ").slice(0,19))}</td></tr>`;
-  }).join(""):`<tr><td class="p-4 text-slate-400" colspan="7">No runs for this filter.</td></tr>`;
-  $("runs").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>replay(tr.dataset.id));
-}
-async function replay(id){
-  const data=await j("/api/runs/"+id);
-  $("replay").classList.remove("hidden");
-  $("replay").innerHTML=`<h2 class="font-semibold mb-2">Run ${id} · ${esc(data.run.filename)}</h2><div id="replaySteps"></div><div id="replayDecision" class="mt-3"></div>`;
-  renderSteps($("replaySteps"),data.events);
-  renderDecision($("replayDecision"),data.run);
-  $("replay").scrollIntoView({behavior:"smooth",block:"nearest"});
-}
-async function loadDash(){
-  const [s,r,p,v]=await Promise.all([j("/api/stats"),j("/api/runs"),j("/api/pos"),j("/api/vendors")]);
-  runsCache=r;
-  const by=s.by_status||{};
-  const pct=s.total?((by.APPROVED||0)/s.total*100).toFixed(1):"0.0";
-  const tiles=[["Runs",s.total],["Approved %",pct],["On hold",by.ON_HOLD||0],["Needs review",by.NEEDS_REVIEW||0],["Rejected",by.REJECTED||0],["Approved value",money(s.approved_value)],["STP rate",s.stp_rate.toFixed(1)+"%"],["Avg time",s.avg_ms+" ms"]];
-  $("stats").innerHTML=tiles.map(([k,val])=>`<div class="bg-white rounded-xl shadow-sm p-3"><div class="text-xs text-slate-500">${k}</div><div class="text-lg font-semibold mt-1">${val}</div></div>`).join("");
-  drawBars(by);
-  $("filters").innerHTML=FILTERS.map(f=>`<button data-f="${f}" class="px-3 py-1 rounded-full text-xs ${f===filter?"bg-slate-900 text-white":"bg-white text-slate-600"}">${f.replaceAll("_"," ")}</button>`).join("");
-  $("filters").querySelectorAll("button").forEach(b=>b.onclick=()=>{filter=b.dataset.f;showRuns();loadDash()});
-  showRuns();
-  $("pos").innerHTML=p.map(row=>`<tr class="border-t"><td class="py-1">${esc(row.po_number)}</td><td>${esc(row.vendor_id)}</td><td>${money(row.total)}</td><td>${money(row.billed)}</td><td>${money(row.remaining)}</td><td>${esc(row.basis)}</td></tr>`).join("");
-  $("vendors").innerHTML=v.map(row=>`<tr class="border-t"><td class="py-1">${esc(row.id)}</td><td>${esc(row.name)}</td><td>${badge(row.status==="approved"?"APPROVED":"REJECTED")}</td><td>${esc(row.tax_id)}</td><td>${row.tolerance_pct}% / ${money(row.tolerance_abs)}</td></tr>`).join("");
-}
-async function loadSettings(){
-  const data=await j("/api/policy");
-  const policy=(data.policy||[]).map(r=>`<tr class="border-t"><td class="py-1">${esc(r.key)}</td><td>${esc(r.value)}</td></tr>`).join("");
-  const vendors=(data.vendors||[]).map(r=>`<tr class="border-t"><td class="py-1">${esc(r.id)}</td><td>${esc(r.name)}</td><td>${esc(r.status)}</td><td>${r.tolerance_pct}% / ${money(r.tolerance_abs)}</td></tr>`).join("");
-  $("settingsBody").innerHTML=`<div class="bg-white rounded-xl shadow-sm p-4"><h2 class="font-semibold mb-2">Extraction engine</h2><p class="mb-4">${badge(data.engine==="gemini"?"APPROVED":"RUNNING")} <span class="ml-2 text-sm">${data.engine==="gemini"?"Gemini key is set":"Offline parser (no Gemini key)"}</span></p><h2 class="font-semibold mb-2">Policy</h2><table class="w-full text-sm"><tbody>${policy}</tbody></table><h2 class="font-semibold mt-4 mb-2">Per-vendor tolerance</h2><table class="w-full text-sm"><tbody>${vendors}</tbody></table></div><div class="bg-white rounded-xl shadow-sm p-4"><h2 class="font-semibold mb-2">Assumptions</h2><ol class="list-decimal pl-5 space-y-2 text-sm leading-relaxed">${(data.assumptions||[]).map(a=>`<li>${esc(a)}</li>`).join("")}</ol></div>`;
-}
-$("tabs").innerHTML=["process","dashboard","settings"].map(t=>`<button data-tab="${t}" class="px-3 py-1.5 rounded-md text-sm">${t[0].toUpperCase()+t.slice(1)}</button>`).join("");
-$("tabs").querySelectorAll("button").forEach(b=>b.onclick=()=>tab(b.dataset.tab));
-$("browse").onclick=()=>$("file").click();
-$("file").onchange=()=>{$("fileName").textContent=$("file").files[0]?$("file").files[0].name:""};
-$("uploadBtn").onclick=()=>upload().catch(e=>alert(e.message));
-$("sampleBtn").onclick=()=>sample().catch(e=>alert(e.message));
-$("resetBtn").onclick=async()=>{if(!confirm("Clear runs and restore the PO ledger?"))return; await j("/api/reset",{method:"POST"}); if(!$("dashboard").classList.contains("hidden")) loadDash(); $("decision").innerHTML=`<p class="text-slate-500">Demo data reset.</p>`; renderSteps($("steps"),[]); renderFields(null)};
-const drop=$("drop");
-["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("border-blue-500","bg-blue-50")}));
-["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("border-blue-500","bg-blue-50")}));
-drop.addEventListener("drop",e=>{const f=e.dataTransfer.files[0]; if(!f) return; const dt=new DataTransfer(); dt.items.add(f); $("file").files=dt.files; $("fileName").textContent=f.name});
-renderSteps($("steps"),[]); renderFields(null); renderDecision($("decision"),null); tab("process"); loadSamples().catch(e=>{$("samples").innerHTML=`<option>No samples</option>`});
+const STAGES=["ingest","extract","confidence_gate","vendor_check","po_match","duplicate_check","financial_validation","decision"],LABEL={ingest:"Ingest",extract:"Extract",confidence_gate:"Confidence gate",vendor_check:"Vendor check",po_match:"PO match",duplicate_check:"Duplicate check",financial_validation:"Financial validation",decision:"Decision"},FILTERS=["ALL","APPROVED","NEEDS_REVIEW","ON_HOLD","REJECTED","FAILED","RUNNING"];let timer,current,filter="ALL",runsCache=[],samplesCache=[],lastEvent=0,slowTimer,demoRunning=false;
+const $=id=>document.getElementById(id),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])),parse=x=>{try{return typeof x==="string"?JSON.parse(x):x||{}}catch{return {}}},asList=x=>{if(Array.isArray(x))return x;if(typeof x==="string"){try{const v=JSON.parse(x);return Array.isArray(v)?v:[]}catch{return []}}return []},money=n=>n==null?"—":"INR "+Number(n).toLocaleString("en-IN",{minimumFractionDigits:2}),j=async(u,o)=>{const r=await fetch(u,o);if(!r.ok){const e=parse(await r.text());throw Error(e.detail||e.message||"Request failed")}return r.json()},toast=(m,ok=true)=>{const t=$("toast");t.textContent=m;t.className=`fixed bottom-4 right-4 rounded-lg px-4 py-2 text-sm shadow-lg ${ok?"bg-slate-900 text-white":"bg-red-700 text-white"}`;setTimeout(()=>t.classList.add("hidden"),5000)};
+window.addEventListener("error",e=>{console.error(e.error||e.message,e.error?.stack);toast("Unexpected error",false)});
+window.addEventListener("unhandledrejection",e=>{console.error(e.reason?.stack||e.reason);toast("Unexpected request error",false)});
+function badge(s){const c={APPROVED:"bg-green-100 text-green-800",NEEDS_REVIEW:"bg-amber-100 text-amber-800",ON_HOLD:"bg-amber-100 text-amber-900",REJECTED:"bg-red-100 text-red-800",FAILED:"bg-red-900 text-white",RUNNING:"bg-slate-200 text-slate-700"};return `<span class="inline-block px-2 py-1 rounded text-xs font-semibold ${c[s]||"bg-slate-100"}">${esc(s||"—")}</span>`}
+function values(d,raw=false){return Object.entries(d||{}).map(([k,v])=>`<tr><td class="py-1 pr-3 text-slate-500 align-top">${esc(k)}</td><td class="py-1">${raw?esc(JSON.stringify(v)):esc(typeof v==="object"?JSON.stringify(v):v)}</td></tr>`).join("")}
+function stageState(e){const d=parse(e?.detail),s=e?.state||"pending";if(e?.stage==="decision"&&s==="done")return["REJECTED","FAILED"].includes(d.status)?"fail":["NEEDS_REVIEW","ON_HOLD"].includes(d.status)?"warn":"done";if(s==="done"&&["rejected","hard","exact"].includes(d.result))return"fail";if(s==="done"&&["warn","bank_changed","soft","fuzzy","not_found"].includes(d.result))return"warn";return s}
+function icon(s){return s==="running"?`<span class="spin inline-block w-4 h-4 border-2 border-slate-300 border-t-blue-600 rounded-full"></span>`:s==="fail"?`<b class="text-red-600">✕</b>`:s==="warn"?`<b class="text-amber-600">!</b>`:s==="done"?`<b class="text-green-600">✓</b>`:s==="skipped"?`<span class="text-slate-400">–</span>`:`<span class="inline-block w-4 h-4 rounded-full border-2 border-slate-300"></span>`}
+function renderSteps(target,events){const latest={};asList(events).forEach(e=>latest[e.stage]=e);target.innerHTML=STAGES.map(stage=>{const e=latest[stage],d=parse(e?.detail),s=stageState(e);return `<div class="border-b last:border-0"><button data-stage="${stage}" class="w-full text-left flex gap-3 items-center py-3">${icon(s)}<span class="flex-1"><b>${LABEL[stage]}</b><span class="block text-xs text-slate-500">${e?.ms?e.ms+" ms · ":""}${stage==="decision"?esc(d.status||""):esc(d.result||e?.state||"pending")}</span></span><span>⌄</span></button><div id="detail-${stage}" class="hidden bg-slate-50 p-3 mb-2 text-xs"><table>${values(d)}</table><pre class="hidden raw mt-2 whitespace-pre-wrap">${esc(JSON.stringify(d,null,2))}</pre><button class="rawToggle text-blue-700 mt-2" data-target="detail-${stage}">raw JSON</button></div></div>`}).join("");target.querySelectorAll("[data-stage]").forEach(b=>b.onclick=()=>$( "detail-"+b.dataset.stage).classList.toggle("hidden"));target.querySelectorAll(".rawToggle").forEach(b=>b.onclick=()=>{const p=$(b.dataset.target);p.querySelector("table").classList.toggle("hidden");p.querySelector("pre").classList.toggle("hidden")})}
+function renderFields(x){if(!x){$("fields").innerHTML=`<p class="text-slate-400">Upload or select an invoice to begin.</p>`;$("engine").classList.add("hidden");return}const fc=x.field_confidence||{};$("engine").textContent=(x.engine||"offline").toUpperCase()+((x.engine_note||"")?" · "+x.engine_note:"");$("engine").classList.remove("hidden");const names=["vendor_name","vendor_tax_id","vendor_bank_account_raw","invoice_number","invoice_date","due_date","po_reference","subtotal","tax_amount","total","document_quality","grounded","math_ok","engine_note","extract_ms","mode","escalation_reasons"];$("fields").innerHTML=`<table class="w-full">${names.filter(k=>x[k]!=null).map(k=>{const f=fc[k],cl=f==null?"":f>=.8?"text-green-700":f>=.7?"text-amber-700":"text-red-700";return `<tr class="border-b"><td class="py-1 text-slate-500">${esc(k)}</td><td class="py-1 font-medium ${cl}">${esc(typeof x[k]==="number"&&k!=="extract_ms"?money(x[k]):Array.isArray(x[k])?x[k].join(", "):x[k])}${f!=null?` <small>(${Math.round(f*100)}%)</small>`:""}</td></tr>`}).join("")}</table>`}
+function readable(v){if(v==null||v==="")return"none";if(Array.isArray(v))return v.length?v.map(readable).join(", "):"none";if(typeof v==="object")return Object.entries(v).map(x=>x[0]+": "+readable(x[1])).join("; ");return String(v).replace(/^"(.*)"$/,"$1")}
+function evidenceBadge(result){const label=String(result||"").toLowerCase(),styles={pass:"bg-green-100 text-green-800",warn:"bg-amber-100 text-amber-800",fail:"bg-red-100 text-red-800"};return `<span class="inline-block px-2 py-1 rounded text-xs font-semibold ${styles[label]||styles.warn}">${esc(label.toUpperCase())}</span>`}
+function evidenceTable(ev){ev=asList(ev);return ev.length?`<h3 class="font-semibold mt-4 mb-2">Evidence</h3><table class="w-full text-xs"><thead class="text-left text-slate-500"><tr><th>Check</th><th>Invoice</th><th>Reference</th><th>Result</th></tr></thead><tbody>${ev.map(x=>{if(x.check==="Purchase order"){x.invoice=x.invoice&&x.invoice!=="none"?`PO cited: ${x.invoice}`:"no PO cited";x.reference=x.reference&&x.reference!=="none"?"on file for vendor":x.invoice==="no PO cited"?"none inferred":"not on file"}return `<tr class="border-t"><td class="py-1">${esc(readable(x.check))}</td><td>${esc(readable(x.invoice))}</td><td>${esc(readable(x.reference))}</td><td>${evidenceBadge(x.result)}</td></tr>`}).join("")}</tbody></table>`:""}
+function localTime(value){if(!value)return"—";const s=String(value);return new Date(/Z$|[+-]\d\d:\d\d$/.test(s)?s:s.replace(" ","T")+"Z").toLocaleString("en-IN")}
+function renderDecision(target,run,events=[]){if(!run){target.innerHTML=`<p class="text-slate-400">No decision yet.</p>`;return}const codes=asList(run.reason_codes),ev=asList(run.evidence),human=asList(events).filter(e=>e.stage==="human_review");target.innerHTML=`<div class="flex flex-wrap items-center gap-2">${badge(run.status)}${codes.map(c=>`<span class="bg-slate-100 rounded px-2 py-1 text-xs">${esc(c)}</span>`).join("")}</div><p class="mt-3">${esc(run.explanation||"")}</p>${evidenceTable(ev)}${run.email_draft?`<div class="bg-amber-50 rounded-lg p-3 mt-4"><div class="flex justify-between"><b>Drafted message</b><button id="copyEmail" class="text-blue-700">Copy</button></div><pre class="whitespace-pre-wrap text-sm mt-2">${esc(run.email_draft)}</pre></div>`:""}${human.length?`<div class="mt-4"><b>Human review timeline</b>${human.map(e=>`<div class="text-xs border-l-2 border-slate-300 pl-3 mt-2">${esc(parse(e.detail).action)} · ${esc(parse(e.detail).note)} · ${localTime(parse(e.detail).timestamp||e.created_at)}</div>`).join("")}</div>`:""}${["NEEDS_REVIEW","ON_HOLD"].includes(run.status)?`<div class="flex flex-wrap gap-2 mt-4"><input id="reviewNote" name="reviewNote" aria-label="Review note" class="border rounded px-2 py-2 text-sm" placeholder="Review note"><input id="reviewPo" name="reviewPo" aria-label="PO number" class="border rounded px-2 py-2 text-sm" placeholder="PO number (optional)"><label class="text-sm flex items-center gap-1"><input id="reviewOverride" name="reviewOverride" aria-label="Override PO balance" type="checkbox"> Override PO balance</label><button data-action="approve" class="bg-green-700 text-white rounded px-3 py-2 text-sm">Approve</button><button data-action="reject" class="bg-red-700 text-white rounded px-3 py-2 text-sm">Reject</button><button data-action="request_info" class="bg-amber-600 text-white rounded px-3 py-2 text-sm">Request info</button></div>`:""}`;if($("copyEmail"))$("copyEmail").onclick=()=>navigator.clipboard.writeText(run.email_draft);target.querySelectorAll("[data-action]").forEach(b=>b.onclick=()=>review(b.dataset.action,run.id,target))}
+async function review(action,id,target){try{const note=$("reviewNote")?.value||"";await j(`/api/runs/${id}/action`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,note,po_number:$("reviewPo")?.value||"",override:$("reviewOverride")?.checked===true})});toast("Decision saved");const d=await j(`/api/runs/${id}`);renderDecision(target,d.run,d.events)}catch(e){toast(e.message,false)}}
+function loadPreview(id,box="previewBox"){const image=$("previewImage"),frame=$("preview"),loading=$("previewLoading");image.classList.remove("hidden");frame.classList.add("hidden");loading.classList.remove("hidden");image.onload=()=>{loading.classList.add("hidden")};image.onerror=()=>{image.classList.add("hidden");frame.classList.remove("hidden");frame.src=`/api/runs/${id}/file#toolbar=0&navpanes=0&zoom=page-width`;loading.classList.add("hidden")};image.src=`/api/runs/${id}/preview.png`}
+async function start(id){current=id;lastEvent=0;clearInterval(timer);clearTimeout(slowTimer);["uploadBtn","sampleBtn","demoBtn"].forEach(x=>$(x).disabled=true);$("runId").textContent="Run "+id;loadPreview(id);$("openPdf").href=`/api/runs/${id}/file`;$("steps").innerHTML="";$("decision").innerHTML=`<p class="text-slate-500">Processing invoice...</p>`;$("slow").classList.add("hidden");slowTimer=setTimeout(()=>$("slow").classList.remove("hidden"),60000);timer=setInterval(async()=>{try{const events=asList(await j(`/api/runs/${id}/events?after=${lastEvent}`));if(events.length)lastEvent=events[events.length-1].id;const all=await j(`/api/runs/${id}`);renderSteps($("steps"),all.events);renderFields(parse(all.run.extracted));renderDecision($("decision"),all.run,all.events);if(events.some(e=>e.stage==="decision"&&e.state==="done")){clearInterval(timer);clearTimeout(slowTimer);$("slow").classList.add("hidden");["uploadBtn","sampleBtn","demoBtn"].forEach(x=>$(x).disabled=false)}}catch(e){clearInterval(timer);clearTimeout(slowTimer);["uploadBtn","sampleBtn","demoBtn"].forEach(x=>$(x).disabled=false);toast(e.message,false)}},400)}
+async function upload(){const f=$("file").files[0];if(!f){toast("Choose a PDF first",false);return}if(f.type!=="application/pdf"&&!f.name.toLowerCase().endsWith(".pdf")){toast("PDF files only",false);return}if(f.size>10*1024*1024){toast("Maximum file size is 10 MB",false);return}const b=$("uploadBtn");b.disabled=true;try{start((await j("/api/runs",{method:"POST",body:(()=>{const x=new FormData();x.append("file",f);return x})()})).id)}catch(e){toast(e.message,false)}finally{b.disabled=false}}
+async function sample(){const b=$("sampleBtn");b.disabled=true;try{const item=samplesCache.find(x=>x.name===$("samples").value),runs=asList(await j("/api/runs"));for(const required of asList(item?.requires)){if(!runs.some(x=>x.filename===required)){const n=item.name.slice(0,2);if(!confirm(`${n} expects ${required.slice(0,2)} to run first, otherwise the result will differ. Run anyway?`))return;break}}start((await j("/api/runs/sample",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:$("samples").value})})).id)}catch(e){toast(e.message,false)}finally{b.disabled=false}}
+async function fullDemo(){if(demoRunning)return;demoRunning=true;const b=$("demoBtn");b.disabled=true;try{if(!confirm("This clears all runs"))return;await j("/api/reset",{method:"POST"});const names=["01_happy.pdf","04_exact_dup.pdf","05_fuzzy_dup.pdf","02_split_2of3.pdf","03_split_overbill.pdf","06_scanned_missing.pdf","07_tax_embedded.pdf","08_blocked_vendor.pdf","09_no_po.pdf","10_bank_change.pdf"],expected=samplesCache;let matches=0;for(let i=0;i<names.length;i++){toast(`${i+1}/10`);const id=(await j("/api/runs/sample",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({name:names[i]})})).id;await new Promise(resolve=>{const q=setInterval(async()=>{const d=await j(`/api/runs/${id}`);if(d.events.some(e=>e.stage==="decision"&&e.state==="done")){clearInterval(q);if(expected.find(x=>x.name===names[i])?.expected===d.run.status)matches++;if(parse(d.run.extracted).engine==="gemini")setTimeout(resolve,2000);else resolve()}},500)})}toast(`Full demo complete: ${matches}/${names.length} expected`)}catch(e){toast(e.message,false)}finally{demoRunning=false;b.disabled=false}}
+function drawBars(by){const keys=Object.keys(by),max=Math.max(1,...keys.map(k=>by[k]));$("bars").innerHTML=`<h3 class="font-semibold mb-3">Status mix</h3>${keys.length?keys.map(k=>`<div class="flex gap-2 items-center text-sm mb-2"><span class="w-28">${esc(k)}</span><span class="h-3 rounded bg-blue-600" style="width:${by[k]/max*100}%"></span><span>${by[k]}</span></div>`).join(""):"<p class='text-slate-400'>No runs yet.</p>"}`}
+function showRuns(){const rows=runsCache.filter(r=>filter==="ALL"||r.status===filter);$("runs").innerHTML=rows.length?rows.map(r=>`<tr data-id="${r.id}" class="border-b hover:bg-slate-50 cursor-pointer"><td class="p-3">${r.id}</td><td>${esc(r.filename)}</td><td>${badge(r.status)}</td><td>${badge((r.engine||"offline").toUpperCase())}<small>${esc(r.engine_note||"")}</small></td><td>${esc(asList(r.reason_codes).join(", "))}</td><td>${esc(r.po_number||"—")}</td><td>${money(r.amount)}</td><td>${esc(r.summary||"")}</td><td>${r.duration_ms||0} ms</td><td>${localTime(r.created_at)}</td></tr>`).join(""):`<tr><td colspan="10" class="p-4 text-slate-400">No runs for this filter.</td></tr>`;$("runs").querySelectorAll("[data-id]").forEach(x=>x.onclick=()=>drawer(x.dataset.id))}
+async function drawer(id){const d=await j(`/api/runs/${id}`);$("drawer").classList.remove("hidden");$("drawer").innerHTML=`<div class="flex justify-between"><h3 class="font-semibold">Run ${id} · ${esc(d.run.filename)}</h3><div class="flex gap-3"><span class="text-xs text-slate-500">${localTime(d.run.created_at)}</span><a class="text-blue-700 text-sm" href="/api/runs/${id}/export">Download JSON</a></div></div><div class="bg-slate-50 border rounded mt-3"><img src="/api/runs/${id}/preview.png" class="w-full max-h-[620px] object-contain" alt="Invoice preview"></div><a class="text-blue-700 text-sm" target="_blank" href="/api/runs/${id}/file">Open PDF</a><div id="drawerSteps" class="mt-3"></div><div id="drawerDecision" class="mt-3"></div>`;renderSteps($("drawerSteps"),d.events);renderFields(parse(d.run.extracted));renderDecision($("drawerDecision"),d.run,d.events)}
+async function loadDash(){const [s,r,p,v]=await Promise.all([j("/api/stats"),j("/api/runs"),j("/api/pos"),j("/api/vendors")]);runsCache=r;const by=s.by_status||{};$("stats").innerHTML=[["Runs",s.total],["Approved %",s.total?((by.APPROVED||0)/s.total*100).toFixed(1)+"%":"0%"],["On hold",by.ON_HOLD||0],["Needs review",by.NEEDS_REVIEW||0],["Rejected",by.REJECTED||0],["Approved value",money(s.approved_value)],["Held value (review + on hold)",money(s.held_value)],["STP rate",(s.stp_rate||0).toFixed(1)+"%"],["Median time",(s.median_ms||0)+" ms"]].map(x=>`<div class="bg-white rounded-xl shadow-sm p-3"><div class="text-xs text-slate-500">${x[0]}</div><div class="font-semibold mt-1">${x[1]}</div></div>`).join("");drawBars(by);$("reasons").innerHTML=`<h3 class="font-semibold mb-3">Reason-code breakdown</h3>${Object.entries(s.by_reason||{}).map(x=>`<div class="flex justify-between text-sm border-b py-1"><span>${esc(x[0])}</span><b>${x[1]}</b></div>`).join("")||"<p class='text-slate-400'>No exception reasons yet.</p>"}`;$("filters").innerHTML=FILTERS.map(f=>`<button data-filter="${f}" class="rounded-full px-3 py-1 text-xs ${filter===f?"bg-slate-900 text-white":"bg-white"}">${f.replaceAll("_"," ")}</button>`).join("");$("filters").querySelectorAll("button").forEach(x=>x.onclick=()=>{filter=x.dataset.filter;showRuns()});showRuns();$("pos").innerHTML=p.map(x=>`<tr class="border-t"><td class="py-2">${x.po_number}</td><td>${x.vendor_id}</td><td>${money(x.total)}</td><td>${money(x.billed)}</td><td>${money(x.remaining)}</td><td><progress value="${x.billed}" max="${x.total}"></progress></td></tr>`).join("");$("vendors").innerHTML=v.map(x=>`<tr class="border-t"><td class="py-2">${x.id}</td><td>${esc(x.name)}</td><td>${x.status==="approved"?badge("APPROVED"):badge("REJECTED").replace("REJECTED","BLOCKED")}</td><td>${x.tax_id}</td><td>${x.tolerance_pct}% / ${money(x.tolerance_abs)}</td></tr>`).join("")}
+function policyRows(items){return asList(items).map(x=>"<label for=\"policy-"+esc(x.key)+"\" class=\"flex justify-between items-center border-t py-2 text-sm\">"+esc(x.key)+"<input id=\"policy-"+esc(x.key)+"\" name=\"policy-"+esc(x.key)+"\" aria-label=\""+esc(x.key)+" policy\" data-policy=\""+esc(x.key)+"\" type=\"number\" min=\"0.0001\" step=\"any\" value=\""+esc(x.value)+"\" class=\"border rounded px-2 py-1 w-28\"></label>").join("")}
+function vendorRows(items){return asList(items).map(x=>"<tr class=\"border-t\"><td class=\"py-1\">"+esc(x.name)+"</td><td>"+esc(x.status)+"</td><td>"+esc(x.tolerance_pct)+"%</td><td>"+money(x.tolerance_abs)+"</td></tr>").join("")}
+function assumptionRows(items){return asList(items).map(x=>"<li>"+esc(x)+"</li>").join("")}
+async function loadSettings(){const result=await Promise.all([j("/api/policy"),j("/api/vendors"),j("/api/engine/status")]);const p=result[0],v=result[1],s=result[2];const engineClass=p.engine==="gemini"?"bg-green-100 text-green-800":p.engine==="disabled"?"bg-red-100 text-red-800":"bg-slate-100 text-slate-700";$("settingsBody").innerHTML="<div class=\"bg-white rounded-xl shadow-sm p-4\"><h3 class=\"font-semibold\">Extraction engine <span class=\"inline-block px-2 py-1 rounded text-xs "+engineClass+"\">"+esc(p.engine.toUpperCase())+"</span></h3><p class=\"text-sm text-slate-500 mt-1\">Model: "+esc(p.model)+" · API key configured: "+(p.gemini_configured?"yes":"no")+"</p><p class=\"text-sm text-slate-500\">Gemini reads PDFs; offline parser is the fallback.</p>"+(!p.gemini_configured?"<p class=\"text-sm mt-2\">Put GEMINI_API_KEY in a local .env file, then restart the server.</p>":"")+"<button id=\"testGemini\" class=\"mt-3 bg-blue-700 text-white rounded px-3 py-2 text-sm\">Test Gemini connection</button><button id=\"warmGemini\" class=\"mt-3 ml-2 bg-indigo-700 text-white rounded px-3 py-2 text-sm\">Pre-warm Gemini cache</button><span id=\"warmStatus\" class=\"ml-2 text-sm\"></span><h3 class=\"font-semibold mt-5 mb-2\">Last 5 extractions</h3><div class=\"text-sm\">"+s.last_runs.map(r=>`<div class=\"border-t py-1\">${esc(r.filename)} · ${esc((r.engine||"offline").toUpperCase())} · ${esc(r.engine_note||"")} · ${r.extract_ms||0} ms</div>`).join("")+"</div><h3 class=\"font-semibold mt-5 mb-2\">Editable policy</h3>"+policyRows(p.policy)+"<button id=\"savePolicy\" class=\"mt-3 bg-blue-700 text-white rounded px-3 py-2 text-sm\">Save policy</button><h3 class=\"font-semibold mt-5 mb-2\">Vendor tolerance</h3><table class=\"w-full text-sm\"><tbody>"+vendorRows(v)+"</tbody></table></div><div class=\"bg-white rounded-xl shadow-sm p-4\"><h3 class=\"font-semibold mb-2\">Assumptions</h3><ol class=\"list-decimal pl-5 text-sm space-y-2\">"+assumptionRows(p.assumptions)+"</ol></div>";$("testGemini").onclick=async()=>{try{const result=await j("/api/engine/test",{method:"POST"});toast(result.ok?"Gemini connection OK ("+result.model+")":result.error,!result.ok?false:true)}catch(e){toast(e.message,false)}};$("warmGemini").onclick=async()=>{await j("/api/engine/warm",{method:"POST"});const q=setInterval(async()=>{const w=await j("/api/engine/warm");$("warmStatus").textContent=`${w.done}/${w.total}`;if(w.state!=="running")clearInterval(q)},1000)};$("savePolicy").onclick=async()=>{try{const inputs=document.querySelectorAll("[data-policy]");for(const input of inputs)await j("/api/policy/"+encodeURIComponent(input.dataset.policy),{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({value:Number(input.value)})});toast("Policy updated")}catch(e){toast(e.message,false)}}}
+async function loadSamples(){samplesCache=asList(await j("/api/samples"));$("samples").innerHTML=samplesCache.map(x=>`<option value="${x.name}">${esc(x.title)} · ${x.expected}${x.edge_case?" · edge case":""}</option>`).join("")}
+function tab(name){["process","dashboard","settings"].forEach(x=>$(x).classList.toggle("hidden",x!==name));if(name==="dashboard")loadDash().catch(e=>toast(e.message,false));if(name==="settings"){loadSettings().then(()=>j("/api/engine/status")).then(s=>{$("engineMode").value=s.extraction_mode;$("breakerState").textContent=`Breaker: ${s.breaker.state}${s.breaker.seconds_remaining?" ("+s.breaker.seconds_remaining+"s)":""}`}).catch(e=>toast(e.message,false))}}
+$("tabs").innerHTML=["process","dashboard","settings"].map(x=>`<button data-tab="${x}" class="px-3 py-1.5 rounded text-sm">${x[0].toUpperCase()+x.slice(1)}</button>`).join("");$("tabs").querySelectorAll("[data-tab]").forEach(x=>x.onclick=()=>tab(x.dataset.tab));$("engineMode").onchange=async()=>{try{await j("/api/engine/mode",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({mode:$("engineMode").value})});toast("Extraction mode updated")}catch(e){toast(e.message,false)}};$("resetBreaker").onclick=async()=>{try{await j("/api/engine/breaker/reset",{method:"POST"});toast("Circuit breaker reset");loadSettings()}catch(e){toast(e.message,false)}};$("browse").onclick=()=>$("file").click();$("file").onchange=()=>{$("fileName").textContent=$("file").files[0]?.name||""};$("uploadBtn").onclick=()=>upload();$("sampleBtn").onclick=()=>sample();$("demoBtn").onclick=()=>fullDemo();$("resetBtn").onclick=async()=>{try{await j("/api/reset",{method:"POST"});clearInterval(timer);renderSteps($("steps"),[]);renderFields(null);renderDecision($("decision"),null);toast("Demo data reset")}catch(e){toast(e.message,false)}};const drop=$("drop");drop.ondragover=e=>{e.preventDefault();drop.classList.add("border-blue-500","bg-blue-50")};drop.ondragleave=()=>drop.classList.remove("border-blue-500","bg-blue-50");drop.ondrop=e=>{e.preventDefault();drop.classList.remove("border-blue-500","bg-blue-50");const f=e.dataTransfer.files[0];if(f){const d=new DataTransfer();d.items.add(f);$("file").files=d.files;$("fileName").textContent=f.name}};renderSteps($("steps"),[]);renderFields(null);renderDecision($("decision"),null);tab("process");loadSamples().catch(e=>toast(e.message,false));
 </script>
 </body>
 </html>

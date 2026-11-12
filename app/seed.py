@@ -6,12 +6,11 @@ ROOT=Path(__file__).resolve().parent.parent
 def run(reset=False):
     init()
     with conn() as c:
-        if c.execute("SELECT COUNT(*) FROM vendors").fetchone()[0]:
-            if reset:
-                with open(ROOT/"data"/"pos.csv",newline="",encoding="utf-8") as h:
-                    c.executemany("UPDATE pos SET billed=? WHERE po_number=?",[(r["billed"],r["po_number"]) for r in csv.DictReader(h)])
-            return
-        for f,table in [("vendors.csv","vendors"),("pos.csv","pos")]:
+        populated=all(c.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in ("vendors","pos","policy"))
+        if populated and not reset:return
+        if reset:
+            for t in ("vendors","pos","policy"): c.execute(f"DELETE FROM {t}")
+        for f,table in (("vendors.csv","vendors"),("pos.csv","pos")):
             with open(ROOT/"data"/f,newline="",encoding="utf-8") as h:
                 rows=list(csv.DictReader(h))
             cols=list(rows[0])

@@ -1,0 +1,61 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 557 >>
+stream
+BT
+/F1 11 Tf
+50 760 Td
+(Apex Office Supplies Pvt Ltd) Tj
+0 -18 Td
+(GSTIN: 27AAACA1234F1Z5) Tj
+0 -18 Td
+(Bank A/C: HDFC0001234-5566) Tj
+0 -18 Td
+(Invoice No: INV2231 \(Revised\)) Tj
+0 -18 Td
+(Invoice Date: 2026-11-03) Tj
+0 -18 Td
+(Due Date: 2026-12-01) Tj
+0 -18 Td
+(PO: PO-1001) Tj
+0 -18 Td
+(Description Qty Unit price Amount) Tj
+0 -18 Td
+(Goods and services 1 INR 100,000.00 INR 100,000.00) Tj
+0 -18 Td
+(GST 18% INR 18,000.00) Tj
+0 -18 Td
+(Subtotal: INR 100,000.00) Tj
+0 -18 Td
+(GST Amount: INR 18,000.00) Tj
+0 -18 Td
+(Total: INR 118,000.00) Tj
+0 -18 Td
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+918
+%%EOF

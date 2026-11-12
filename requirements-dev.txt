@@ -1,0 +1,6 @@
+-r requirements.txt
+weasyprint
+jinja2
+pillow
+pytest
+httpx

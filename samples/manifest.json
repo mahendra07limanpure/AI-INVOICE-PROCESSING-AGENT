@@ -1,0 +1,12 @@
+{
+  "01_happy.pdf": {"title": "Clean invoice, exact PO match", "expected": "APPROVED", "edge_case": false},
+  "02_split_2of3.pdf": {"title": "Split billing, invoice 2 of 3", "expected": "APPROVED", "edge_case": true},
+  "03_split_overbill.pdf": {"title": "Split billing exceeds PO balance", "expected": "REJECTED", "edge_case": true, "requires": ["02_split_2of3.pdf"]},
+  "04_exact_dup.pdf": {"title": "Same file re-sent", "expected": "REJECTED", "edge_case": true, "requires": ["01_happy.pdf"]},
+  "05_fuzzy_dup.pdf": {"title": "Corrected resend (INV2231 Revised)", "expected": "NEEDS_REVIEW", "edge_case": true, "requires": ["01_happy.pdf"]},
+  "06_scanned_missing.pdf": {"title": "Scanned, invoice number unreadable", "expected": "ON_HOLD", "edge_case": true},
+  "07_tax_embedded.pdf": {"title": "PO on net basis, invoice has GST", "expected": "APPROVED", "edge_case": true},
+  "08_blocked_vendor.pdf": {"title": "Blocked vendor", "expected": "REJECTED", "edge_case": true},
+  "09_no_po.pdf": {"title": "No PO cited, inferred", "expected": "APPROVED", "edge_case": true},
+  "10_bank_change.pdf": {"title": "Bank account differs from master", "expected": "NEEDS_REVIEW", "edge_case": true}
+}
